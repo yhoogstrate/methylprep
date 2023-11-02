@@ -1,6 +1,7 @@
 # Lib
 from setuptools import setup, find_packages
 exec(open('methylprep/version.py').read())
+requirements=open('requirements.txt').readlines()
 
 test_requirements = [
     'methylcheck', # 'git+https://github.com/FoxoTech/methylcheck.git@feature/v0.7.7#egg=methylcheck',
@@ -45,17 +46,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     package_data={"":["*.txt.gz"]},
-    install_requires=[
-        'pyparsing > 3.0',
-        'numpy',
-        'pandas >=1.3.0',
-        'scipy',
-        'statsmodels',
-        'tqdm',
-        'bs4',
-        'lxml',
-        'requests',
-    ],
+    install_requires=requirements,
     extras_require={
         'dev': test_requirements
     },
