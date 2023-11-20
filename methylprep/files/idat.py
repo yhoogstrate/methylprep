@@ -21,7 +21,7 @@ from ..utils import (
 )
 
 LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel( logging.WARNING )
+LOGGER.setLevel( logging.INFO )
 
 __all__ = ['IdatDataset']
 
@@ -243,6 +243,9 @@ class IdatDataset():
 
         seek_to_section(IdatSectionCode.BARCODE)
         self.barcode = read_string(idat_file)
+
+        seek_to_section(IdatSectionCode.MOSTLY_A)
+        self.label = read_string(idat_file)
 
         seek_to_section(IdatSectionCode.CHIP_TYPE)
         self.chip_type = read_string(idat_file)
