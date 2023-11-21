@@ -53,6 +53,7 @@ You should install all three components, as they work together. The parts includ
 
 ```shell
 >>> git clone https://github.com/yhoogstrate/pymetharray
+>>> git checkout -b dev origin/dev
 >>> cd pymetharray
 >>> virtualenv -p python3 .venv
 >>> source .venv/bin/activate
