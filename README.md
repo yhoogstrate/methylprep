@@ -1,3 +1,6 @@
+`pymetharray` is a fork of the python package `methylprep` which remained unmaintained.
+---
+
 `methylprep` is a python package for processing Illumina methylation array data.
 View on [ReadTheDocs.](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/)
 
@@ -44,12 +47,26 @@ You should install all three components, as they work together. The parts includ
 `methylprep` maintains configuration files for your Python package manager of choice: [pipenv](https://pipenv.readthedocs.io/en/latest/) or [pip](https://pip.pypa.io/en/stable/). Conda install is coming soon.
 
 ```shell
+>>> virtualenv -p python3 .venv
+>>> source .venv/bin/activate
+>>> pip install .
+```
+
+```shell
 >>> pip install methylprep
 ```
 
 or if you want to install all three packages at once:
 ```shell
 >>> pip install methylsuite
+```
+
+## Testing code
+
+```
+>>> source .venv/bin/activate
+>>> pip install pytest
+>>> pytest
 ```
 
 ## Tutorials and Guides
