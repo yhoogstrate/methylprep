@@ -28,6 +28,7 @@ class TestGetSampleSheet():
             missing_path.touch()
             find_sample_sheet(missing_path)
 
+    @pytest.fixture
     def test_raises_if_no_csv_files(self, mocker, tmp_path):
         with pytest.raises(FileNotFoundError):
             sample_sheet_path = tmp_path.joinpath('sample_sheet.txt')
@@ -38,6 +39,7 @@ class TestGetSampleSheet():
 
             find_sample_sheet(tmp_path)
 
+    @pytest.fixture
     def test_raises_if_no_valid_csv_files(self, mocker, tmp_path):
         with pytest.raises(FileNotFoundError):
             sample_sheet_path = tmp_path.joinpath('sample_sheet.csv')
@@ -48,6 +50,7 @@ class TestGetSampleSheet():
 
             find_sample_sheet(tmp_path)
 
+    @pytest.fixture
     def test_raises_if_too_many_valid_files(self, mocker, tmp_path):
         with pytest.raises(Exception):
             path_1 = tmp_path.joinpath('sample_sheet1.csv')
@@ -61,6 +64,7 @@ class TestGetSampleSheet():
 
             find_sample_sheet(tmp_path)
 
+    @pytest.fixture
     def test_returns_samplesheet_with_validpath(self, mocker, tmp_path):
         sample_sheet_path = tmp_path.joinpath('samplesheet.csv')
         sample_sheet_path.touch()
