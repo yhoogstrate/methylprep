@@ -52,18 +52,11 @@ You should install all three components, as they work together. The parts includ
 `methylprep` maintains configuration files for your Python package manager of choice: [pipenv](https://pipenv.readthedocs.io/en/latest/) or [pip](https://pip.pypa.io/en/stable/). Conda install is coming soon.
 
 ```shell
+>>> git clone https://github.com/yhoogstrate/pymetharray
+>>> cd pymetharray
 >>> virtualenv -p python3 .venv
 >>> source .venv/bin/activate
 >>> pip install .
-```
-
-```shell
->>> pip install methylprep
-```
-
-or if you want to install all three packages at once:
-```shell
->>> pip install methylsuite
 ```
 
 ## Testing code
