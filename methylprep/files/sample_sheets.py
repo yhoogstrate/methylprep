@@ -31,12 +31,14 @@ def get_sample_sheet(dir_path, filepath=None):
     Returns:
         [SampleSheet] -- A SampleSheet instance.
     """
-    LOGGER.debug('Reading sample sheet')
 
     if not filepath:
         filepath = find_sample_sheet(dir_path)
 
-    data_dir = PurePath(filepath).parent
+    LOGGER.debug('Reading sample sheet '+str(filepath))
+
+    data_dir = PurePath(dir_path)
+    
     return SampleSheet(filepath, data_dir)
 
 

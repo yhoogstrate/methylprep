@@ -93,7 +93,7 @@ Keyword Arguments:
         else:
             return f'{self.sentrix_id}_{self.sentrix_position}'
 
-    def get_filepath(self, extension, suffix=None, verify=True):
+    def get_filepath(self, extension, suffix=None, verify=True, external_path=None):
         """builds the filepath based on custom file extensions and suffixes during processing.
 
         Params (verify):
@@ -110,7 +110,12 @@ Keyword Arguments:
 
         filename = f'{self.base_filename}{_suffix}.{extension}'
         alt_filename = f'{self.alternate_base_filename}{_suffix}.{extension}'
-        path = PurePath(self.data_dir, str(self.sentrix_id), filename)
+        
+        if external_path is None:
+            path = PurePath(self.data_dir, str(self.sentrix_id), filename)
+        else:
+            path = PurePath(external_path, filename) # explicitly defined external path, no sentrix_id subfolder needed
+
         if verify:
             # confirm this sample IDAT file exists, and update its filepath if different.
             # if filename fails, it will check alt_filename too.
@@ -177,6 +182,6 @@ Keyword Arguments:
             LOGGER.warning(f'Multiple ({len(file_matches)}) files matched {alt_filename} -- saved path to first one: {file_matches[0]}')
         return file_matches[0]
 
-    def get_export_filepath(self, extension='csv'):
+    def get_export_filepath(self, extension='csv', external_path=None):
         """ Called by run_pipeline to find the folder/filename to export data as CSV, but CSV file doesn't exist yet."""
-        return self.get_filepath(extension, 'processed', verify=False)
+        return self.get_filepath(extension, 'processed', verify=False, external_path=external_path)

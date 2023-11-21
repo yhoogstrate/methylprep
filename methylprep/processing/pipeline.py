@@ -40,7 +40,7 @@ __all__ = ['SampleDataContainer', 'run_pipeline', 'consolidate_values_for_sheet'
 LOGGER = logging.getLogger(__name__)
 
 
-def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None,
+def run_pipeline(data_dir, array_type=None, export=False, output_dir=None, manifest_filepath=None,
                  sample_sheet_filepath=None, sample_name=None,
                  betas=False, m_value=False, make_sample_sheet=False, batch_size=None,
                  save_uncorrected=False, save_control=True, meta_data_frame=True,
@@ -345,11 +345,17 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 pneg_ecdf=pneg_ecdf,
                 file_format=file_format,
             )
+            
             data_container.process_all()
 
             if export: # as CSV or parquet
                 suffix = 'parquet' if file_format == 'parquet' else 'csv'
-                output_path = data_container.sample.get_export_filepath(extension=suffix)
+                
+                if output_dir is None:
+                    output_path = data_container.sample.get_export_filepath(extension=suffix)
+                else:
+                    output_path = data_container.sample.get_export_filepath(external_path = output_dir, extension=suffix)
+                
                 data_container.export(output_path)
                 export_paths.add(output_path)
                 # this tidies-up the tqdm by moving errors to end of batch warning.
@@ -397,12 +403,13 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 df = df.transpose() # put probes as columns for faster loading.
             # sort sample names
             df = df.sort_index().reindex(sorted(df.columns), axis=1)
+            
             if file_format == 'parquet':
                 # put probes in rows; format is optimized for same-type storage so it won't really matter
-                df.to_parquet(Path(data_dir,f"{out_name}.parquet"))
+                df.to_parquet(Path(data_dir if output_dir is None else output_dir, f"{out_name}.parquet"))
             else:
-                df.to_pickle(Path(data_dir, f"{out_name}.pkl"))
-            LOGGER.info(f"saved {out_name}")
+                df.to_pickle(Path(data_dir if output_dir is None else output_dir, f"{out_name}.pkl"))
+            LOGGER.info(f"saved {data_dir if output_dir is None else output_dir}/{out_name}")
 
         if betas:
             df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='beta_value', bit=bit, poobah=poobah, exclude_rs=True)
@@ -431,8 +438,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             LOGGER.info(f"saved {mouse_probe_filename}")
 
         if export:
-            export_path_parents = list(set([str(Path(e).parent) for e in export_paths]))
-            LOGGER.info(f"[!] Exported results ({file_format}) to: {export_path_parents}")
+            output_dir_parents = list(set([str(Path(e).parent) for e in export_paths]))
+            LOGGER.info(f"[!] Exported results ({file_format}) to: {output_dir_parents}")
 
         if export_poobah:
             if all(['poobah_pval' in e._SampleDataContainer__data_frame.columns for e in batch_data_containers]):
@@ -455,7 +462,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         #data_containers.extend(batch_data_containers)
 
         pkl_name = f"_temp_data_{batch_num}.pkl"
-        with open(Path(data_dir,pkl_name), 'wb') as temp_data:
+        with open(Path(data_dir if output_dir is None else output_dir, pkl_name), 'wb') as temp_data:
             pickle.dump(batch_data_containers, temp_data)
             temp_data_pickles.append(pkl_name)
 
@@ -465,10 +472,10 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         meta_frame = sample_sheet.build_meta_data(samples)
         if file_format == 'parquet':
             meta_frame_filename = f'sample_sheet_meta_data.parquet'
-            meta_frame.to_parquet(Path(data_dir, meta_frame_filename))
+            meta_frame.to_parquet(Path(data_dir if output_dir is None else output_dir, meta_frame_filename))
         else:
             meta_frame_filename = f'sample_sheet_meta_data.pkl'
-            meta_frame.to_pickle(Path(data_dir, meta_frame_filename))
+            meta_frame.to_pickle(Path(data_dir if output_dir is None else output_dir, meta_frame_filename))
         LOGGER.info(f"saved {meta_frame_filename}")
 
     # FIXED in v1.3.0
@@ -483,7 +490,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             )
         else:
             control_filename = f'control_probes.pkl'
-            with open(Path(data_dir, control_filename), 'wb') as control_file:
+            with open(Path(data_dir if output_dir is None else output_dir, control_filename), 'wb') as control_file:
                 pickle.dump(control_snps, control_file)
         LOGGER.info(f"saved {control_filename}")
 
@@ -502,25 +509,25 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         LOGGER.warning("Because the batch size was >=200 samples, files are saved but no data objects are returned.")
         del batch_data_containers
         for temp_data in temp_data_pickles:
-            temp_file = Path(data_dir, temp_data)
+            temp_file = Path(data_dir if output_dir is None else output_dir, temp_data)
             temp_file.unlink(missing_ok=True) # delete it
         return
 
     # consolidate batches and delete parts, if possible
     for file_type in ['beta_values', 'm_values', 'meth_values', 'unmeth_values',
         'noob_meth_values', 'noob_unmeth_values', 'mouse_probes', 'poobah_values']: # control_probes.pkl not included yet
-        test_parts = list([str(temp_file) for temp_file in Path(data_dir).rglob(f'{file_type}*.{suffix}')])
+        test_parts = list([str(temp_file) for temp_file in Path(data_dir if output_dir is None else output_dir).rglob(f'{file_type}*.{suffix}')])
         num_batches = len(test_parts)
         # ensures that only the file_types that appear to be selected get merged.
         #print(f"DEBUG num_batches {num_batches}, batch_size {batch_size}, file_type {file_type}")
         if batch_size and num_batches >= 1: #--- if the batch size was larger than the number of total samples, this will still drop the _1
-            merge_batches(num_batches, data_dir, file_type, file_format)
+            merge_batches(num_batches, data_dir if output_dir is None else output_dir, file_type, file_format)
 
     # reload all the big stuff -- after everything important is done.
     # attempts to consolidate all the batch_files below, if they'll fit in memory.
     data_containers = []
     for temp_data in temp_data_pickles:
-        temp_file = Path(data_dir, temp_data)
+        temp_file = Path(data_dir if output_dir is None else output_dir, temp_data)
         if temp_file.exists(): #possibly user deletes file while processing, since these are big
             with open(temp_file,'rb') as _file:
                 batch_data_containers = pickle.load(_file)
