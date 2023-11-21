@@ -145,6 +145,7 @@ def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.cs
     Arguments:
         dir_path {string or path-like} -- Base directory of the sample sheet and associated IDAT files.
         matrix_file {boolean} -- Whether or not a Series Matrix File should be searched for names. (default: {False})
+        file_basename_filters -- Subselections of files to include in the sample sheet, e.g. ["206467011168_R01C01"] or ["206467010068_R01C01_Grn.idat"]
 
         ========== | ========= | ==== | =======
         parameter  | required | type | effect
@@ -182,10 +183,9 @@ def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.cs
 
     file_name_error_msg = "This .idat file does not have the right pattern to auto-generate a sample sheet: {0}"
     for idat in idat_files:
-        # split string by '/', last element is local file name
         try:
             filename = os.path.basename(idat)
-            
+
             if file_basename_filters is None:
                 _match = True
             else:
