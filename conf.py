@@ -41,7 +41,7 @@ release = '1.6.5'
 extensions = [
     'sphinx.ext.autodoc',
     'sphinxcontrib.apidoc',
-    'm2r',
+    'm2r2',
     'nbsphinx',
     'sphinx.ext.autosummary',
     'sphinx.ext.doctest',

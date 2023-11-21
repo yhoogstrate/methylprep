@@ -1,4 +1,5 @@
 # Lib
+import os
 import logging
 from pathlib import Path, PurePath
 import pandas as pd
@@ -136,7 +137,7 @@ def find_sample_sheet(dir_path, return_all=False):
 
 
 def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.csv',
-    sample_type='', sample_sub_type=''):
+    sample_type='', sample_sub_type='', output_path=None, file_basename_filters = None):
     """Creates a samplesheet.csv file from the .IDAT files of a GEO series directory
 
     Arguments:
@@ -181,26 +182,37 @@ def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.cs
     for idat in idat_files:
         # split string by '/', last element is local file name
         try:
-            filename = str(idat).split("/")[-1]
-            split_filename = filename.split("_")
-
-            if split_filename[0].startswith('GSM'):
-                _dict['GSM_ID'].append(split_filename[0])
-                _dict['Sentrix_ID'].append(split_filename[1])
-                _dict['Sentrix_Position'].append(split_filename[2])
-            elif len(split_filename) == 3:
-                _dict['GSM_ID'].append("")
-                _dict['Sentrix_ID'].append(split_filename[0])
-                _dict['Sentrix_Position'].append(split_filename[1])
+            filename = os.path.basename(idat)
+            
+            if file_basename_filters is None:
+                _match = True
             else:
-                raise ValueError(file_name_error_msg.format(idat))
+                _match = False
+                for filter in file_basename_filters:
+                    if filename.find(filter) != -1:
+                        _match = True
+
+            if _match:
+                split_filename = filename.split("_")
+
+                if split_filename[0].startswith('GSM'):
+                    _dict['GSM_ID'].append(split_filename[0])
+                    _dict['Sentrix_ID'].append(split_filename[1])
+                    _dict['Sentrix_Position'].append(split_filename[2])
+                elif len(split_filename) == 3:
+                    _dict['GSM_ID'].append("")
+                    _dict['Sentrix_ID'].append(split_filename[0])
+                    _dict['Sentrix_Position'].append(split_filename[1])
+                else:
+                    raise ValueError(file_name_error_msg.format(idat))
+                
+                if sample_type:
+                    _dict['Sample_Type'].append(sample_type)
+                if sample_sub_type:
+                    _dict['Sample_Sub_Type'].append(sample_sub_type)
+
         except:
             raise ValueError(file_name_error_msg.format(idat))
-
-        if sample_type:
-            _dict['Sample_Type'].append(sample_type)
-        if sample_sub_type:
-            _dict['Sample_Sub_Type'].append(sample_sub_type)
 
     if matrix_file:
         _dict['Sample_Name'] = sample_names_from_matrix(dir_path, _dict['GSM_ID'])
@@ -210,9 +222,14 @@ def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.cs
             _dict['Sample_Name'].append("Sample_" + str(i))
 
     df = pd.DataFrame(data=_dict)
-    df.to_csv(path_or_buf=(PurePath(dir_path, output_file)),index=False)
 
-    LOGGER.info(f"[!] Created sample sheet: {dir_path}/samplesheet.csv with {len(_dict['GSM_ID'])} GSM_IDs")
+    if output_path is None:
+        exp_path = (PurePath(dir_path, output_file))
+    else:
+        exp_path = (PurePath(str(output_path), output_file)) # e.g. for storage of idats on read only mount points
+    df.to_csv(path_or_buf=exp_path,index=False)
+
+    LOGGER.info(f"[!] Created sample sheet: {exp_path} with {len(_dict['GSM_ID'])} GSM_IDs")
 
 
 def sample_names_from_matrix(dir_path, ordered_GSMs=None):

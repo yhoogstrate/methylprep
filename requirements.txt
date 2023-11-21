@@ -7,7 +7,6 @@ pytest
 coverage
 python-coveralls
 sphinxcontrib-apidoc
-m2r
 nbsphinx
 tqdm
 beautifulsoup4
