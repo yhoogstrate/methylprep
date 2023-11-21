@@ -1,4 +1,9 @@
-`pymetharray` is a fork of the python package `methylprep` which remained unmaintained.
+`pymetharray` is a fork of the python package `methylprep` which became unmaintained.
+
+It primarily serves as API interface for embedded array classifiers rather than direct
+analysis, for which different optimizations and data structures were needed. Some
+behaviour will probably break and become backwards incompatible.
+
 ---
 
 `methylprep` is a python package for processing Illumina methylation array data.
