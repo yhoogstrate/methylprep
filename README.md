@@ -1,5 +1,13 @@
-`methylprep` is a python package for processing Illumina methylation array data.
-View on [ReadTheDocs.](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/)
+
+# pymethyarray:  python package for processing for Illumina BeadChips
+
+`pymetharray` is a fork of the `methylprep`, whereas `methylprep` is a python package for processing Illumina methylation array data.
+Major difference in design philosopy:
+ - Input is considered per idat file, not per array or per dataset
+ - As such, API is restructured and not backwards compatible
+
+
+View the former docs on [ReadTheDocs.](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/)
 
 [![tests](https://github.com/FoxoTech/methylprep/workflows/tests/badge.svg)](https://github.com/FoxoTech/methylprep/actions/workflows/ci.yml) [![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methylprep/badge/?version=latest)](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![CircleCI](https://circleci.com/gh/FoxoTech/methylprep.svg?style=shield)](https://circleci.com/gh/FoxoTech/methylprep) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/e7228cfdfd714411bda7d6f8d6656630)](https://www.codacy.com/gh/FoxoTech/methylprep/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=FoxoTech/methylprep&amp;utm_campaign=Badge_Grade) [![Coverage Status](https://coveralls.io/repos/github/FoxoTech/methylprep/badge.svg?t=mwigt8)](https://coveralls.io/github/FoxoTech/methylprep) [![PyPI-Downloads](https://img.shields.io/pypi/dm/methylprep.svg?label=pypi%20downloads&logo=PyPI&logoColor=white)](https://pypi.org/project/methylprep/)
 
