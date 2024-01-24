@@ -233,7 +233,7 @@ def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.cs
 
     LOGGER.info(f"[!] Created sample sheet: {exp_path} with {len(_dict['GSM_ID'])} GSM_IDs")
     
-    return (_dict)
+    return (SampleSheet(output_file, output_path if output_path is not None else dir_path))
 
 
 def sample_names_from_matrix(dir_path, ordered_GSMs=None):
@@ -303,8 +303,8 @@ class SampleSheet():
         self.headers = []
         self.alt_headers = None
 
-        with get_file_object(filepath_or_buffer) as sample_sheet_file:
-            self.read(sample_sheet_file)
+        with get_file_object(filepath_or_buffer) as sample_sheet_fh:
+            self.read(sample_sheet_fh)
 
     @staticmethod
     def is_sample_sheet(filepath_or_buffer):
@@ -420,7 +420,7 @@ class SampleSheet():
         Dev notes:
             It loads whole file using pandas.read_csv to better handle whitespace/matching on headers.""".format(REQUIRED_HEADERS)
 
-        LOGGER.debug('Parsing sample_sheet')
+        LOGGER.debug('Parsing sample_sheet: '+str(sample_sheet_file))
 
         if not self.is_sample_sheet(sample_sheet_file):
             columns = ', '.join(REQUIRED_HEADERS)
