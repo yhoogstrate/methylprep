@@ -30,10 +30,16 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 from pymetharray.files import create_sample_sheet
-sss = create_sample_sheet('cache/', output_file='cache/samplesheet.csv', output_path = ".")
+ss = create_sample_sheet('cache/', output_file='cache/samplesheet.csv', output_path = ".")
 
-#from pymetharray.files import SampleSheet
-#ss = SampleSheet('cache/samplesheet.csv', data_dir = '.')
 
-for sample in sss.get_samples():
-    print(sample)
+ss.build_samples()
+sls = ss.get_samples()
+
+from pymetharray.models.raw_dataset import *
+
+sls[0].get_filepath("idat")
+
+#ds1 = RawDataset(sls[0])
+ds1 = RawDataset(12334456)
+

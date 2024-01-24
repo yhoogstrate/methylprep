@@ -11,7 +11,8 @@ test_requirements = [
     'matplotlib',
     'scikit-learn', # openpyxl uses this, and forcing it to install the best version, not sklearn 0.0
     'openpyxl',
-    'coverage'
+    'coverage',
+    'beartype'
 ]
 
 setup(

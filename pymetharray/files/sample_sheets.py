@@ -1,3 +1,5 @@
+from beartype import beartype
+
 # Lib
 import os
 import logging
@@ -17,29 +19,6 @@ LOGGER = logging.getLogger(__name__)
 REQUIRED_HEADERS = {'Sample_Name', 'Sentrix_ID', 'Sentrix_Position'}
 ALT_REQUIRED_HEADERS = {'Sample_Name', 'SentrixBarcode_A', 'SentrixPosition_A'}
 
-
-def get_sample_sheet(dir_path, filepath=None):
-    """Generates a SampleSheet instance for a given directory of processed data.
-
-    Arguments:
-        dir_path {string or path-like} -- Base directory of the sample sheet and associated IDAT files.
-
-    Keyword Arguments:
-        filepath {string or path-like} -- path of the sample sheet file if provided, otherwise
-            one will try to be found. (default: {None})
-
-    Returns:
-        [SampleSheet] -- A SampleSheet instance.
-    """
-
-    if not filepath:
-        filepath = find_sample_sheet(dir_path)
-
-    LOGGER.debug('Reading sample sheet '+str(filepath))
-
-    data_dir = PurePath(dir_path)
-    
-    return SampleSheet(filepath, data_dir)
 
 
 def get_sample_sheet_s3(zip_reader):
@@ -138,102 +117,6 @@ def find_sample_sheet(dir_path, return_all=False):
     return sample_sheet_file
 
 
-def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.csv',
-    sample_type='', sample_sub_type='', output_path=None, file_basename_filters = None):
-    """Creates a samplesheet.csv file from the .IDAT files of a GEO series directory
-
-    Arguments:
-        dir_path {string or path-like} -- Base directory of the sample sheet and associated IDAT files.
-        matrix_file {boolean} -- Whether or not a Series Matrix File should be searched for names. (default: {False})
-        file_basename_filters -- Subselections of files to include in the sample sheet, e.g. ["206467011168_R01C01"] or ["206467010068_R01C01_Grn.idat"]
-
-        ========== | ========= | ==== | =======
-        parameter  | required | type | effect
-        ========== | =========  ==== | =======
-        sample_type | optional | string | label all samples in created sheet as this type (i.e. blood, saliva, tumor cells)
-        sample_sub_type |  optional | string | further detail sample type for batch
-        controls | optional | list of sample_names | assign all samples in controls list to be "control samples", not treatment samples.
-        ========== | ========= | ==== | =======
-
-    Note:
-        Because sample_names are only generated from Matrix files, this method won't let you assign controls to samples from CLI.
-        Would require all sample names be passed in from CLI as well, a pretty messy endeavor.
-
-    Raises:
-        FileNotFoundError: The directory could not be found.
-    """
-
-    sample_dir = Path(dir_path)
-
-    if not sample_dir.is_dir():
-        raise FileNotFoundError(f'{dir_path} is not a valid directory path')
-
-    idat_files = sample_dir.rglob('*Grn.idat*') #.gz OK
-
-    _dict = {'GSM_ID': [], 'Sample_Name': [], 'Sentrix_ID': [], 'Sentrix_Position': []}
-
-    # additional optional columns
-    addl_cols = []
-    if sample_type:
-        _dict['Sample_Type'] = []
-        addl_cols.append('Sample_Type')
-    if sample_sub_type:
-        _dict['Sample_Sub_Type'] = []
-        addl_cols.append('Sample_Sub_Type')
-
-    file_name_error_msg = "This .idat file does not have the right pattern to auto-generate a sample sheet: {0}"
-    for idat in idat_files:
-        try:
-            filename = os.path.basename(idat)
-
-            if file_basename_filters is None:
-                _match = True
-            else:
-                _match = False
-                for filter in file_basename_filters:
-                    if filename.find(filter) != -1:
-                        _match = True
-
-            if _match:
-                split_filename = filename.split("_")
-
-                if split_filename[0].startswith('GSM'):
-                    _dict['GSM_ID'].append(split_filename[0])
-                    _dict['Sentrix_ID'].append(split_filename[1])
-                    _dict['Sentrix_Position'].append(split_filename[2])
-                elif len(split_filename) == 3:
-                    _dict['GSM_ID'].append("")
-                    _dict['Sentrix_ID'].append(split_filename[0])
-                    _dict['Sentrix_Position'].append(split_filename[1])
-                else:
-                    raise ValueError(file_name_error_msg.format(idat))
-                
-                if sample_type:
-                    _dict['Sample_Type'].append(sample_type)
-                if sample_sub_type:
-                    _dict['Sample_Sub_Type'].append(sample_sub_type)
-
-        except:
-            raise ValueError(file_name_error_msg.format(idat))
-
-    if matrix_file:
-        _dict['Sample_Name'] = sample_names_from_matrix(dir_path, _dict['GSM_ID'])
-    else:
-        # generate sample names
-        for i in range (1, len(_dict['GSM_ID']) + 1):
-            _dict['Sample_Name'].append("Sample_" + str(i))
-
-    df = pd.DataFrame(data=_dict)
-
-    if output_path is None:
-        exp_path = (PurePath(dir_path, output_file))
-    else:
-        exp_path = (PurePath(str(output_path), output_file)) # e.g. for storage of idats on read only mount points
-    df.to_csv(path_or_buf=exp_path,index=False)
-
-    LOGGER.info(f"[!] Created sample sheet: {exp_path} with {len(_dict['GSM_ID'])} GSM_IDs")
-    
-    return (SampleSheet(output_file, output_path if output_path is not None else dir_path))
 
 
 def sample_names_from_matrix(dir_path, ordered_GSMs=None):
@@ -345,6 +228,9 @@ class SampleSheet():
         building them if necessary."""
         if not self.__samples:
             self.build_samples()
+        
+        logging.debug("returning "+str(len(self.__samples)) + " samples in a list")
+        
         return self.__samples
 
     def get_sample(self, sample_name):
@@ -375,7 +261,8 @@ class SampleSheet():
 
         self.__samples = []
 
-        #logging.info('Building samples')
+        logging.info('Building samples')
+        logging.debug(str(self.__samples))
 
         for _index, row in self.__data_frame.iterrows():
             if self.alt_headers:
@@ -398,6 +285,8 @@ class SampleSheet():
                 self.renamed_fields.update(sample.renamed_fields)
             self.fields.update(sample.fields)
             self.__samples.append(sample)
+    
+        logging.debug(str(self.__samples))
 
     def contains_column(self, column_name):
         """ helper function to determine if sample_sheet contains a specific column, such as GSM_ID.
@@ -489,6 +378,8 @@ class SampleSheet():
         # rename ALT columns to standard columns in the sample_sheet dataframe now.
         if self.alt_headers:
             self.rename_alt_headers()
+        
+        LOGGER.debug(str(self.__data_frame))
 
     def rename_alt_headers(self):
         columns = {'SentrixBarcode_A':'Sentrix_ID','SentrixPosition_A':'Sentrix_Position'}
@@ -538,3 +429,127 @@ class SampleSheet():
         meta_frame = pd.DataFrame(columns=cols, data=rows)
         
         return meta_frame
+
+
+def get_sample_sheet(dir_path, filepath=None):
+    """Generates a SampleSheet instance for a given directory of processed data.
+
+    Arguments:
+        dir_path {string or path-like} -- Base directory of the sample sheet and associated IDAT files.
+
+    Keyword Arguments:
+        filepath {string or path-like} -- path of the sample sheet file if provided, otherwise
+            one will try to be found. (default: {None})
+
+    Returns:
+        [SampleSheet] -- A SampleSheet instance.
+    """
+
+    if not filepath:
+        filepath = find_sample_sheet(dir_path)
+
+    LOGGER.debug('Reading sample sheet '+str(filepath))
+
+    data_dir = PurePath(dir_path)
+    
+    return SampleSheet(filepath, data_dir)
+
+
+@beartype
+def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.csv',
+    sample_type='', sample_sub_type='', output_path=None, file_basename_filters = None) -> SampleSheet:
+    """Creates a samplesheet.csv file from the .IDAT files of a GEO series directory
+
+    Arguments:
+        dir_path {string or path-like} -- Base directory of the sample sheet and associated IDAT files.
+        matrix_file {boolean} -- Whether or not a Series Matrix File should be searched for names. (default: {False})
+        file_basename_filters -- Subselections of files to include in the sample sheet, e.g. ["206467011168_R01C01"] or ["206467010068_R01C01_Grn.idat"]
+
+        ========== | ========= | ==== | =======
+        parameter  | required | type | effect
+        ========== | =========  ==== | =======
+        sample_type | optional | string | label all samples in created sheet as this type (i.e. blood, saliva, tumor cells)
+        sample_sub_type |  optional | string | further detail sample type for batch
+        controls | optional | list of sample_names | assign all samples in controls list to be "control samples", not treatment samples.
+        ========== | ========= | ==== | =======
+
+    Note:
+        Because sample_names are only generated from Matrix files, this method won't let you assign controls to samples from CLI.
+        Would require all sample names be passed in from CLI as well, a pretty messy endeavor.
+
+    Raises:
+        FileNotFoundError: The directory could not be found.
+    """
+
+    sample_dir = Path(dir_path)
+
+    if not sample_dir.is_dir():
+        raise FileNotFoundError(f'{dir_path} is not a valid directory path')
+
+    idat_files = sample_dir.rglob('*Grn.idat*') #.gz OK
+
+    _dict = {'GSM_ID': [], 'Sample_Name': [], 'Sentrix_ID': [], 'Sentrix_Position': []}
+
+    # additional optional columns
+    addl_cols = []
+    if sample_type:
+        _dict['Sample_Type'] = []
+        addl_cols.append('Sample_Type')
+    if sample_sub_type:
+        _dict['Sample_Sub_Type'] = []
+        addl_cols.append('Sample_Sub_Type')
+
+    file_name_error_msg = "This .idat file does not have the right pattern to auto-generate a sample sheet: {0}"
+    for idat in idat_files:
+        try:
+            filename = os.path.basename(idat)
+
+            if file_basename_filters is None:
+                _match = True
+            else:
+                _match = False
+                for filter in file_basename_filters:
+                    if filename.find(filter) != -1:
+                        _match = True
+
+            if _match:
+                split_filename = filename.split("_")
+
+                if split_filename[0].startswith('GSM'):
+                    _dict['GSM_ID'].append(split_filename[0])
+                    _dict['Sentrix_ID'].append(split_filename[1])
+                    _dict['Sentrix_Position'].append(split_filename[2])
+                elif len(split_filename) == 3:
+                    _dict['GSM_ID'].append("")
+                    _dict['Sentrix_ID'].append(split_filename[0])
+                    _dict['Sentrix_Position'].append(split_filename[1])
+                else:
+                    raise ValueError(file_name_error_msg.format(idat))
+                
+                if sample_type:
+                    _dict['Sample_Type'].append(sample_type)
+                if sample_sub_type:
+                    _dict['Sample_Sub_Type'].append(sample_sub_type)
+
+        except:
+            raise ValueError(file_name_error_msg.format(idat))
+
+    if matrix_file:
+        _dict['Sample_Name'] = sample_names_from_matrix(dir_path, _dict['GSM_ID'])
+    else:
+        # generate sample names
+        for i in range (1, len(_dict['GSM_ID']) + 1):
+            _dict['Sample_Name'].append("Sample_" + str(i))
+
+    df = pd.DataFrame(data=_dict)
+
+    if output_path is None:
+        exp_path = (PurePath(dir_path, output_file))
+    else:
+        exp_path = (PurePath(str(output_path), output_file)) # e.g. for storage of idats on read only mount points
+    df.to_csv(path_or_buf=exp_path,index=False)
+
+    LOGGER.info(f"[!] Created sample sheet: {exp_path} with {len(_dict['GSM_ID'])} GSM_IDs")
+    
+    return (SampleSheet(output_file, output_path if output_path is not None else dir_path))
+
