@@ -1,7 +1,7 @@
 # Lib
 from setuptools import setup, find_packages
 
-exec(open('methylprep/version.py').read())
+exec(open('pymetharray/version.py').read())
 requirements=open('requirements.txt').readlines()
 
 test_requirements = [

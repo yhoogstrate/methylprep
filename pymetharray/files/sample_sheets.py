@@ -232,6 +232,8 @@ def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.cs
     df.to_csv(path_or_buf=exp_path,index=False)
 
     LOGGER.info(f"[!] Created sample sheet: {exp_path} with {len(_dict['GSM_ID'])} GSM_IDs")
+    
+    return (_dict)
 
 
 def sample_names_from_matrix(dir_path, ordered_GSMs=None):

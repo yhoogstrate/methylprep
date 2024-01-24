@@ -21,6 +21,8 @@ gunzip cache/GSM6379997_203927450093_R01C01_Grn.idat.gz
 python
 """
 
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 from pymetharray.files import create_sample_sheet
 print(create_sample_sheet('cache/', output_file='cache/samplesheet.csv', output_path = "."))
