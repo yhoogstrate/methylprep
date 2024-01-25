@@ -40,8 +40,11 @@ for sample in ss:
     print(sample)
     print(type(sample).__name__)
     print("")
-    
-    ds = RawDataset(sls[0])
+
+
+from pymetharray.processing.pipeline import run_pipeline_ss
+run_pipeline_ss(ss)
+
 
 
 """

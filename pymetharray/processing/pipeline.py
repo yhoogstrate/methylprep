@@ -7,6 +7,8 @@ from collections import Counter
 from pathlib import Path
 import pickle
 import sys
+from beartype import beartype
+
 # App
 from ..files import Manifest, get_sample_sheet, create_sample_sheet
 from ..models import (
@@ -33,11 +35,503 @@ from .p_value_probe_detection import _pval_sesame_preprocess, _pval_neg_ecdf
 from .infer_channel_switch import infer_type_I_probes
 from .dye_bias import nonlinear_dye_bias_correction
 from .multi_array_idat_batches import check_array_folders
+from ..files.sample_sheets import SampleSheet
 
 
 __all__ = ['SampleDataContainer', 'run_pipeline', 'consolidate_values_for_sheet', 'make_pipeline']
 
 LOGGER = logging.getLogger(__name__)
+
+
+@beartype
+def run_pipeline_ss(sample_sheet: SampleSheet, array_type=None, export=False, output_dir=None, manifest_filepath=None,
+                 sample_sheet_filepath=None, sample_name=None,
+                 betas=False, m_value=False, make_sample_sheet=False, batch_size=None,
+                 save_uncorrected=False, save_control=True, meta_data_frame=True,
+                 bit='float32', poobah=False, export_poobah=False,
+                 poobah_decimals=3, poobah_sig=0.05, low_memory=True,
+                 sesame=True, quality_mask=None, pneg_ecdf=False, file_format='pickle', **kwargs):
+    """The main CLI processing pipeline. This does every processing step and returns a data set.
+
+    Required Arguments:
+        data_dir [required]
+            path where idat files can be found, and a samplesheet csv.
+
+    Optional file and sub-sampling inputs:
+        manifest_filepath [optional]
+            if you want to provide a custom manifest, provide the path. Otherwise, it will download
+            the appropriate one for you.
+        sample_sheet_filepath [optional]
+            it will autodetect if ommitted.
+        make_sample_sheet [optional]
+            if True, generates a sample sheet from idat files called 'samplesheet.csv', so that processing will work.
+            From CLI pass in "--no_sample_sheet" to trigger sample sheet auto-generation.
+        sample_name [optional, list]
+            if you don't want to process all samples, you can specify individual samples as a list.
+            if sample_names are specified, this will not also do batch sizes (large batches must process all samples)
+
+    Optional processing arguments:
+        sesame [default: True]
+            If True, applies offsets, poobah, noob, infer_channel_switch, nonlinear-dye-bias-correction, and qualityMask to imitate the output of openSesame function.
+            If False, outputs will closely match minfi's processing output.
+            Prior to version 1.4.0, file processing matched minfi.
+        array_type [default: autodetect]
+            27k, 450k, EPIC, EPIC+
+            If omitted, this will autodetect it.
+        batch_size [optional]
+            if set to any integer, samples will be processed and saved in batches no greater than
+            the specified batch size. This will yield multiple output files in the format of
+            "beta_values_1.pkl ... beta_values_N.pkl".
+        bit [default: float32]
+            You can change the processed output files to one of: {float16, float32, float64}.
+            This will make files & memory usage smaller, often with no loss in precision.
+            However, using float16 masy cause an overflow error, resulting in "inf" appearing instead of numbers, and numpy/pandas functions do not universally support float16.
+        low_memory [default: True]
+            If False, pipeline will not remove intermediate objects and data sets during processing.
+            This provides access to probe subsets, foreground, and background probe sets in the
+            SampleDataContainer object returned when this is run in a notebook (not CLI).
+        quality_mask [default: None]
+            If False, process will NOT remove sesame's list of unreliable probes.
+            If True, removes probes.
+            The default None will defer to sesamee, which defaults to true. But if explicitly set, it will override sesame setting.
+
+    Optional export files:
+        meta_data_frame [default: True]
+            if True, saves a file, "sample_sheet_meta_data.pkl" with samplesheet info.
+        export [default: False]
+            if True, exports a CSV of the processed data for each idat file in sample.
+        file_format [default: pickle; optional: parquet]
+            Matrix style files are faster to load and process than CSVs, and python supports two
+            types of binary formats: pickle and parquet. Parquet is readable by other languages,
+            so it is an option starting v1.7.0.
+        save_uncorrected [default: False]
+            if True, adds two additional columns to the processed.csv per sample (meth and unmeth),
+            representing the raw fluorescence intensities for all probes.
+            It does not apply NOOB correction to values in these columns.
+        save_control [default: False]
+            if True, adds all Control and SnpI type probe values to a separate pickled dataframe,
+            with probes in rows and sample_name in the first column.
+            These non-CpG probe names are excluded from processed data and must be stored separately.
+        poobah [default: False]
+            If specified as True, the pipeline will run Sesame's p-value probe detection method (poobah)
+            on samples to remove probes that fail the signal/noise ratio on their fluorescence channels.
+            These will appear as NaNs in the resulting dataframes (beta_values.pkl or m_values.pkl).
+            All probes, regardless of p-value cutoff, will be retained in CSVs, but there will be a 'poobah_pval'
+            column in CSV files that methylcheck.load uses to exclude failed probes upon import at a later step.
+        poobah_sig [default: 0.05]
+            the p-value level of significance, above which, will exclude probes from output (typical range of 0.001 to 0.1)
+        poobah_decimals [default: 3]
+            The number of decimal places to round p-value column in the processed CSV output files.
+        mouse probes
+            Mouse-specific will be saved if processing a mouse array.
+
+    Optional final estimators:
+        betas
+            if True, saves a pickle (beta_values.pkl) of beta values for all samples
+        m_value
+            if True, saves a pickle (m_values.pkl) of beta values for all samples
+        Note on meth/unmeth:
+            if either betas or m_value is True, this will also save two additional files:
+            'meth_values.pkl' and 'unmeth_values.pkl' with the same dataframe structure,
+            representing raw, uncorrected meth probe intensities for all samples. These are useful
+            in some methylcheck functions and load/produce results 100X faster than loading from
+            processed CSV output.
+
+    Returns:
+        By default, if called as a function, a list of SampleDataContainer objects is returned, with the following execptions:
+
+        betas
+            if True, will return a single data frame of betavalues instead of a list of SampleDataContainer objects.
+            Format is a "wide matrix": columns contain probes and rows contain samples.
+        m_value
+            if True, will return a single data frame of m_factor values instead of a list of SampleDataContainer objects.
+            Format is a "wide matrix": columns contain probes and rows contain samples.
+        if batch_size is set to more than ~600 samples, nothing is returned but all the files are saved. You can recreate/merge output files by loading the files using methylcheck.load().
+
+    Processing notes:
+        The sample_sheet parser will ensure every sample has a unique name and assign one (e.g. Sample1) if missing, or append a number (e.g. _1) if not unique.
+        This may cause sample_sheets and processed data in dataframes to not match up. Will fix in future version.
+
+        pipeline steps:
+            1 make sample sheet or read sample sheet into a list of samples' data
+            2 split large projects into batches, if necessary, and ensure unique sample names
+            3 read idats
+            4 select and read manifest
+            5 put everything into SampleDataContainer class objects
+            6 process everything, using the pipeline steps specified
+                idats -> channel_swaps -> poobah -> quality_mask -> noob -> dye_bias
+            7 apply the final estimator function (beta, m_value, or copy number) to all data
+            8 export all the data into multiple files, as defined by pipeline
+        """
+    #local_vars = list(locals().items())
+    #print([(key,val) for key,val in local_vars])
+    # support for the make_pipeline wrapper function here; a more structured way to pass in args like sklearn.
+    # unexposed flags all start with 'do_': (None will retain default settings)
+    do_infer_channel_switch = None # defaults to sesame(True)
+    do_noob = None # defaults to True
+    do_nonlinear_dye_bias = True # defaults to sesame(True), but can be False (linear) or None (omit step)
+    do_save_noob = None
+    do_mouse = True
+    hidden_kwargs = ['pipeline_steps', 'pipeline_exports', 'debug']
+    if kwargs != {}:
+        for kwarg in kwargs:
+            if kwarg not in hidden_kwargs:
+                if sys.stdin.isatty() is False:
+                    raise SystemExit(f"One of your parameters ({kwarg}) was not recognized. Did you misspell it?")
+                else:
+                    raise KeyError(f"One of your parameters ({kwarg}) was not recognized. Did you misspell it?")
+    if sesame == True:
+        poobah = True # if sesame is True and poobah is False, it hangs forever.
+    if sesame == False and 'pipeline_steps' not in kwargs:
+        do_nonlinear_dye_bias = False # FORCE minfi to do linear
+
+    if kwargs != {} and 'pipeline_steps' in kwargs:
+        pipeline_steps = kwargs.get('pipeline_steps')
+        if 'all' in pipeline_steps:
+            do_infer_channel_switch = True
+            poobah = True
+            quality_mask = True
+            do_noob = True
+            do_nonlinear_dye_bias = True
+            sesame = None # prevent this from overriding elsewhere
+        else:
+            do_infer_channel_switch = True if 'infer_channel_switch' in pipeline_steps else False
+            poobah = True if 'poobah' in pipeline_steps else False
+            quality_mask = True if 'quality_mask' in pipeline_steps else False
+            do_noob = True if 'noob' in pipeline_steps else False
+            if 'dye_bias' in pipeline_steps:
+                do_nonlinear_dye_bias = True
+            elif 'linear_dye_bias' in pipeline_steps:
+                do_nonlinear_dye_bias = False
+            else:
+                do_nonlinear_dye_bias = None # omit step
+            sesame = None if sesame == True else sesame
+    if kwargs != {} and 'pipeline_exports' in kwargs:
+        pipeline_exports = kwargs.get('pipeline_exports')
+        if 'all' in pipeline_exports:
+            export = True # csv
+            save_uncorrected = True # meth, unmeth
+            do_save_noob = True # noob_meth, noob_unmeth
+            export_poobah = True # poobah
+            meta_data_frame = True # sample_sheet_meta_data
+            do_mouse = True # 'mouse' -- only if array_type matches; False will suppress export
+            save_control = True # control
+        else:
+            export = True if 'csv' in pipeline_exports else False
+            save_uncorrected = True if ('meth' in pipeline_exports or 'unmeth' in pipeline_exports) else False
+            do_save_noob = True if ('noob_meth' in pipeline_exports or 'noob_unmeth' in pipeline_exports) else False
+            export_poobah = True if 'poobah' in pipeline_exports else False
+            meta_data_frame = True if 'sample_sheet_meta_data' in pipeline_exports else False
+            # mouse is determined by the array_type match, but you can suppress creating this file here
+            do_mouse = True if 'mouse' in pipeline_exports else False
+            save_control = True if 'control' in pipeline_exports else False
+    if file_format == 'parquet':
+        try:
+            pd.DataFrame().to_parquet()
+        except AttributeError():
+            LOGGER.error("parquet is not installed in your environment; reverting to pickle format")
+            file_format = 'pickle'
+    suffix = 'parquet' if file_format == 'parquet' else 'pkl'
+
+    LOGGER.info('Running pipeline in: %s', sample_sheet.data_dir)
+    if bit not in ('float64','float32','float16'):
+        raise ValueError("Input 'bit' must be one of ('float64','float32','float16') or ommitted.")
+    if sample_name:
+        LOGGER.info('Sample names: {0}'.format(sample_name))
+
+    samples = sample_sheet.get_samples()
+    if sample_sheet.renamed_fields != {}:
+        show_fields = []
+        for k,v in sample_sheet.renamed_fields.items():
+            if v != k:
+                show_fields.append(f"{k} --> {v}")
+            else:
+                show_fields.append(f"{k}")
+        LOGGER.info(f"Found {len(show_fields)} additional fields in sample_sheet:\n{' | '.join(show_fields)}")
+
+    if sample_name is not None:
+        if not isinstance(sample_name,(list,tuple)):
+            raise SystemExit(f"sample_name must be a list of sample_names")
+        matched_samples = [sample.name for sample in samples if sample.name in sample_name]
+        if set(matched_samples) != set(sample_name):
+            possible_sample_names = [sample.name for sample in samples]
+            unmatched_samples = [_sample for _sample in sample_name if _sample not in possible_sample_names]
+            raise SystemExit(f"Your sample_name filter does not match the samplesheet; these samples were not found: {unmatched_samples}")
+
+    batches = []
+    batch = []
+    sample_id_counter = 1
+    if batch_size:
+        if type(batch_size) != int or batch_size < 1:
+            raise ValueError('batch_size must be an integer greater than 0')
+        for sample in samples:
+            if sample_name and sample.name not in sample_name:
+                continue
+
+            # batch uses Sample_Name, so ensure these exist
+            if sample.name in (None,''):
+                sample.name = f'Sample_{sample_id_counter}'
+                sample_id_counter += 1
+            # and are unique.
+            if Counter((s.name for s in samples)).get(sample.name) > 1:
+                sample.name = f'{sample.name}_{sample_id_counter}'
+                sample_id_counter += 1
+
+            if len(batch) < batch_size:
+                batch.append(sample.name)
+            else:
+                batches.append(batch)
+                batch = []
+                batch.append(sample.name)
+        batches.append(batch)
+    else:
+        for sample in samples:
+            if sample_name and sample.name not in sample_name:
+                continue
+
+            # batch uses Sample_Name, so ensure these exist
+            if sample.name in (None,''):
+                sample.name = f'Sample_{sample_id_counter}'
+                sample_id_counter += 1
+            # and are unique.
+            if Counter((s.name for s in samples)).get(sample.name) > 1:
+                sample.name = f'{sample.name}_{sample_id_counter}'
+                sample_id_counter += 1
+
+            batch.append(sample.name)
+        batches.append(batch)
+
+    temp_data_pickles = []
+    control_snps = {}
+    #data_containers = [] # returned when this runs in interpreter, and < 200 samples
+    # v1.3.0 memory fix: save each batch_data_containers object to disk as temp, then load and combine at end.
+    # 200 samples still uses 4.8GB of memory/disk space (float64)
+    missing_probe_errors = {'noob': [], 'raw':[]}
+
+    for batch_num, batch in enumerate(batches, 1):
+        idat_datasets = parse_sample_sheet_into_idat_datasets(sample_sheet, sample_name=batch, from_s3=None, meta_only=False, bit=bit) # replaces get_raw_datasets
+        # idat_datasets are a list; each item is a dict of {'green_idat': ..., 'red_idat':..., 'array_type', 'sample'} to feed into SigSet
+        #--- pre v1.5 --- raw_datasets = get_raw_datasets(sample_sheet, sample_name=batch)
+        if array_type is None: # use must provide either the array_type or manifest_filepath.
+            array_type = get_array_type(idat_datasets)
+        manifest = Manifest(array_type, manifest_filepath) # this allows each batch to be a different array type; but not implemented yet. common with older GEO sets.
+
+        batch_data_containers = []
+        export_paths = set() # inform CLI user where to look
+        for idat_dataset_pair in tqdm(idat_datasets, total=len(idat_datasets), desc="Processing samples"):
+            data_container = SampleDataContainer(
+                idat_dataset_pair=idat_dataset_pair,
+                manifest=manifest,
+                retain_uncorrected_probe_intensities=save_uncorrected,
+                bit=bit,
+                switch_probes=(do_infer_channel_switch or sesame), # this applies all sesame-specific options
+                quality_mask= (quality_mask or sesame or False), # this applies all sesame-specific options (beta / noob offsets too)
+                do_noob=(do_noob if do_noob != None else True), # None becomes True, but make_pipeline can override with False
+                pval=poobah, #defaults to False as of v1.4.0
+                poobah_decimals=poobah_decimals,
+                poobah_sig=poobah_sig,
+                do_nonlinear_dye_bias=do_nonlinear_dye_bias, # start of run_pipeline sets this to True, False, or None
+                debug=kwargs.get('debug',False),
+                sesame=sesame,
+                pneg_ecdf=pneg_ecdf,
+                file_format=file_format,
+            )
+            
+            data_container.process_all()
+
+            if export: # as CSV or parquet
+                suffix = 'parquet' if file_format == 'parquet' else 'csv'
+                
+                if output_dir is None:
+                    output_path = data_container.sample.get_export_filepath(extension=suffix)
+                else:
+                    output_path = data_container.sample.get_export_filepath(external_path = output_dir, extension=suffix)
+                
+                data_container.export(output_path)
+                export_paths.add(output_path)
+                # this tidies-up the tqdm by moving errors to end of batch warning.
+                if data_container.noob_processing_missing_probe_errors != []:
+                    missing_probe_errors['noob'].extend(data_container.noob_processing_missing_probe_errors)
+                if data_container.raw_processing_missing_probe_errors != []:
+                    missing_probe_errors['raw'].extend(data_container.raw_processing_missing_probe_errors)
+
+            if save_control: # Process and consolidate now. Keep in memory. These files are small.
+                sample_id = f"{data_container.sample.sentrix_id}_{data_container.sample.sentrix_position}"
+                control_df = one_sample_control_snp(data_container)
+                control_snps[sample_id] = control_df
+
+            # now I can drop all the unneeded stuff from each SampleDataContainer (400MB per sample becomes 92MB)
+            # these are stored in SampleDataContainer.__data_frame for processing.
+            if low_memory is True:
+                # use data_frame values instead of these class objects, because they're not in sesame SigSets.
+                del data_container.man
+                del data_container.snp_man
+                del data_container.ctl_man
+                del data_container.green_idat
+                del data_container.red_idat
+                del data_container.data_channel
+                del data_container.methylated
+                del data_container.unmethylated
+                del data_container.oobG
+                del data_container.oobR
+                del data_container.ibG
+                del data_container.ibR
+            batch_data_containers.append(data_container)
+
+            #if str(data_container.sample) == '200069280091_R01C01':
+            #    print(f"200069280091_R01C01 -- cg00035864 -- meth -- {data_container._SampleDataContainer__data_frame['meth']['cg00035864']}")
+            #    print(f"200069280091_R01C01 -- cg00035864 -- unmeth -- {data_container._SampleDataContainer__data_frame['unmeth']['cg00035864']}")
+
+        if kwargs.get('debug'): LOGGER.info('[finished SampleDataContainer processing]')
+
+        def _prepare_save_out_file(df, file_stem, uint16=False):
+            out_name = f"{file_stem}_{batch_num}" if batch_size else file_stem
+            if uint16 and file_format != 'parquet':
+                df = df.astype('float32') if df.isna().sum().sum() > 0 else df.astype('uint16')
+            else:
+                df = df.astype('float32')
+            if df.shape[1] > df.shape[0]:
+                df = df.transpose() # put probes as columns for faster loading.
+            # sort sample names
+            df = df.sort_index().reindex(sorted(df.columns), axis=1)
+            
+            if file_format == 'parquet':
+                # put probes in rows; format is optimized for same-type storage so it won't really matter
+                df.to_parquet(Path(data_dir if output_dir is None else output_dir, f"{out_name}.parquet"))
+            else:
+                df.to_pickle(Path(data_dir if output_dir is None else output_dir, f"{out_name}.pkl"))
+            LOGGER.info(f"saved {data_dir if output_dir is None else output_dir}/{out_name}")
+
+        if betas:
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='beta_value', bit=bit, poobah=poobah, exclude_rs=True)
+            _prepare_save_out_file(df, 'beta_values')
+        if m_value:
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='m_value', bit=bit, poobah=poobah, exclude_rs=True)
+            _prepare_save_out_file(df, 'm_values')
+        if (do_save_noob is not False) or betas or m_value:
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='noob_meth', bit=bit, poobah=poobah, exclude_rs=True)
+            _prepare_save_out_file(df, 'noob_meth_values', uint16=True)
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='noob_unmeth', bit=bit, poobah=poobah, exclude_rs=True)
+            _prepare_save_out_file(df, 'noob_unmeth_values', uint16=True)
+        if save_uncorrected:
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='meth', bit=bit, poobah=False, exclude_rs=True)
+            _prepare_save_out_file(df, 'meth_values', uint16=True)
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='unmeth', bit=bit, poobah=False, exclude_rs=True)
+            _prepare_save_out_file(df, 'unmeth_values', uint16=True)
+
+        if manifest.array_type == ArrayType.ILLUMINA_MOUSE and do_mouse:
+            # save mouse specific probes
+            if not batch_size:
+                mouse_probe_filename = f'mouse_probes.{suffix}'
+            else:
+                mouse_probe_filename = f'mouse_probes_{batch_num}.{suffix}'
+            consolidate_mouse_probes(batch_data_containers, Path(data_dir, mouse_probe_filename), file_format)
+            LOGGER.info(f"saved {mouse_probe_filename}")
+
+        if export:
+            output_dir_parents = list(set([str(Path(e).parent) for e in export_paths]))
+            LOGGER.info(f"[!] Exported results ({file_format}) to: {output_dir_parents}")
+
+        if export_poobah:
+            if all(['poobah_pval' in e._SampleDataContainer__data_frame.columns for e in batch_data_containers]):
+                # this option will save pvalues for all samples, with sample_ids in the column headings and probe names in index.
+                # this sets poobah to false in kwargs, otherwise some pvalues would be NaN I think.
+                df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='poobah_pval', bit=bit, poobah=False, poobah_sig=poobah_sig, exclude_rs=True)
+                _prepare_save_out_file(df, 'poobah_values')
+
+            if all(['pNegECDF_pval' in e._SampleDataContainer__data_frame.columns for e in batch_data_containers]):
+                # this option will save negative control based pvalues for all samples, with
+                # sample_ids in the column headings and probe names in index.
+                df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='pNegECDF_pval', bit=bit, poobah=False, poobah_sig=poobah_sig, exclude_rs=True)
+                _prepare_save_out_file(df, 'pNegECDF_values')
+
+        # v1.3.0 fixing mem problems: pickling each batch_data_containers object then reloading it later.
+
+        # consolidating data_containers this will break with really large sample sets, so skip here.
+        #if batch_size and batch_size >= 200:
+        #    continue
+        #data_containers.extend(batch_data_containers)
+
+        pkl_name = f"_temp_data_{batch_num}.pkl"
+        with open(Path(data_dir if output_dir is None else output_dir, pkl_name), 'wb') as temp_data:
+            pickle.dump(batch_data_containers, temp_data)
+            temp_data_pickles.append(pkl_name)
+
+    del batch_data_containers
+
+    if meta_data_frame == True:
+        meta_frame = sample_sheet.build_meta_data(samples)
+        if file_format == 'parquet':
+            meta_frame_filename = f'sample_sheet_meta_data.parquet'
+            meta_frame.to_parquet(Path(data_dir if output_dir is None else output_dir, meta_frame_filename))
+        else:
+            meta_frame_filename = f'sample_sheet_meta_data.pkl'
+            meta_frame.to_pickle(Path(data_dir if output_dir is None else output_dir, meta_frame_filename))
+        LOGGER.info(f"saved {meta_frame_filename}")
+
+    # FIXED in v1.3.0
+    if save_control:
+        if file_format == 'parquet':
+            control_filename = f'control_probes.parquet'
+            control = pd.concat(control_snps) # creates multiindex
+            (control.reset_index()
+                .rename(columns={'level_0': 'Sentrix_ID', 'level_1': 'IlmnID'})
+                .astype({'IlmnID':str})
+                .to_parquet('control_probes.parquet')
+            )
+        else:
+            control_filename = f'control_probes.pkl'
+            with open(Path(data_dir if output_dir is None else output_dir, control_filename), 'wb') as control_file:
+                pickle.dump(control_snps, control_file)
+        LOGGER.info(f"saved {control_filename}")
+
+    # summarize any processing errors
+    if missing_probe_errors['noob'] != []:
+        avg_missing_per_sample = int(round(sum([item[1] for item in missing_probe_errors['noob']])/len(missing_probe_errors['noob'])))
+        samples_affected = len(set([item[0] for item in missing_probe_errors['noob']]))
+        LOGGER.warning(f"{samples_affected} samples were missing (or had infinite values) NOOB meth/unmeth probe values (average {avg_missing_per_sample} per sample)")
+    if missing_probe_errors['raw'] != []:
+        avg_missing_per_sample = int(round(sum([item[1] for item in missing_probe_errors['raw']])/len(missing_probe_errors['raw'])))
+        samples_affected = len(set([item[0] for item in missing_probe_errors['raw']]))
+        LOGGER.warning(f"{samples_affected} samples were missing (or had infinite values) RAW meth/unmeth probe values (average {avg_missing_per_sample} per sample)")
+
+    # batch processing done; consolidate and return data. This uses much more memory, but not called if in batch mode.
+    if batch_size and batch_size >= 200:
+        LOGGER.warning("Because the batch size was >=200 samples, files are saved but no data objects are returned.")
+        del batch_data_containers
+        for temp_data in temp_data_pickles:
+            temp_file = Path(data_dir if output_dir is None else output_dir, temp_data)
+            temp_file.unlink(missing_ok=True) # delete it
+        return
+
+    # consolidate batches and delete parts, if possible
+    for file_type in ['beta_values', 'm_values', 'meth_values', 'unmeth_values',
+        'noob_meth_values', 'noob_unmeth_values', 'mouse_probes', 'poobah_values']: # control_probes.pkl not included yet
+        test_parts = list([str(temp_file) for temp_file in Path(data_dir if output_dir is None else output_dir).rglob(f'{file_type}*.{suffix}')])
+        num_batches = len(test_parts)
+        # ensures that only the file_types that appear to be selected get merged.
+        #print(f"DEBUG num_batches {num_batches}, batch_size {batch_size}, file_type {file_type}")
+        if batch_size and num_batches >= 1: #--- if the batch size was larger than the number of total samples, this will still drop the _1
+            merge_batches(num_batches, data_dir if output_dir is None else output_dir, file_type, file_format)
+
+    # reload all the big stuff -- after everything important is done.
+    # attempts to consolidate all the batch_files below, if they'll fit in memory.
+    data_containers = []
+    for temp_data in temp_data_pickles:
+        temp_file = Path(data_dir if output_dir is None else output_dir, temp_data)
+        if temp_file.exists(): #possibly user deletes file while processing, since these are big
+            with open(temp_file,'rb') as _file:
+                batch_data_containers = pickle.load(_file)
+                data_containers.extend(batch_data_containers)
+                del batch_data_containers
+            temp_file.unlink() # delete it after loading.
+
+    if betas:
+        return consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value', poobah=poobah, exclude_rs=True)
+    elif m_value:
+        return consolidate_values_for_sheet(data_containers, postprocess_func_colname='m_value', poobah=poobah, exclude_rs=True)
+    else:
+        return data_containers
 
 
 def run_pipeline(data_dir, array_type=None, export=False, output_dir=None, manifest_filepath=None,

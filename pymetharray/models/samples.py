@@ -43,6 +43,7 @@ Keyword Arguments:
         self.sentrix_id = sentrix_id
         self.sentrix_position = sentrix_position
         self.renamed_fields = {}
+        self.raw_dataset = None
 
         # any OTHER sample_sheet columns are passed in exactly as they appear, if possible, and if column names exist.
         # these will pass into the meta_data pkl created, and any renamed fields must be noted in a lookup.

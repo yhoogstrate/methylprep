@@ -227,7 +227,8 @@ class SampleSheet():
         except Exception:
             return False
 
-    def get_samples(self):
+    @beartype
+    def get_samples(self) -> list:
         """Retrieves Sample objects from the processed sample sheet rows,
         building them if necessary."""
         if not self.__samples:
