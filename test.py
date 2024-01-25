@@ -32,43 +32,21 @@ logging.basicConfig(level=logging.DEBUG)
 from pymetharray.files import create_sample_sheet
 ss = create_sample_sheet('cache/', output_file='cache/samplesheet.csv', output_path = ".")
 
-print("")
-print("")
-
-
-for sample in ss:
-    print(sample)
-    print(type(sample).__name__)
-    print("")
-
-
-"""
-from urllib.request import Request, urlopen
-url="https://s3.amazonaws.com/array-manifest-files/HumanMethylationEPIC_manifest_v2.csv.gz"
-req = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-
-web_byte = urlopen(req).read()
-"""
-
-"""
-from pymetharray.utils.files import download_file
-download_file("HumanMethylationEPIC_manifest_v2.csv.gz", "https://s3.amazonaws.com/array-manifest-files", "/tmp")
-
-"""
 
 from pymetharray.processing.pipeline import run_pipeline_ss
-run_pipeline_ss(ss)
+run_pipeline_ss(ss,
+
+    output_dir = "cache",
+    sample_sheet_filepath="cache/samplesheet.csv",
+    export=True,
+    
+    save_uncorrected = False,
+    export_poobah = False,
+    meta_data_frame = False,
+    save_control=False,
+    
+    do_save_noob = False
+    
+    )
 
 
-"""
-
-
-sls = ss.get_samples()
-
-from pymetharray.models.raw_dataset import *
-
-sls[0].get_filepath("idat")
-
-#ds1 = RawDataset(sls[0])
-ds1 = RawDataset(12334456)
-"""

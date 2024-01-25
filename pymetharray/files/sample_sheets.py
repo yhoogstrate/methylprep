@@ -277,7 +277,6 @@ class SampleSheet():
         self.__samples = []
 
         logging.info('Building samples')
-        logging.debug(str(self.__samples))
 
         for _index, row in self.__data_frame.iterrows():
             if self.alt_headers:
@@ -286,13 +285,6 @@ class SampleSheet():
             else:
                 sentrix_id = row['Sentrix_ID'].strip()
                 sentrix_position = row['Sentrix_Position'].strip()
-
-            print(self.data_dir)
-            print(_index)
-            print(row)
-            print(sentrix_id)
-            print(sentrix_position)
-            print("---")
 
             if not (sentrix_id and sentrix_position):
                 continue
@@ -408,8 +400,6 @@ class SampleSheet():
             self.rename_alt_headers()
         
         self.build_samples()
-        
-        LOGGER.debug(str(self.__data_frame))
         
         return len(self.__data_frame)
 

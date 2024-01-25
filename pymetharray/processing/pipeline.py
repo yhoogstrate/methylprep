@@ -48,8 +48,8 @@ LOGGER = logging.getLogger(__name__)
 def run_pipeline_ss(sample_sheet: SampleSheet, array_type=None, export=False, output_dir=None, manifest_filepath=None,
                  sample_sheet_filepath=None, sample_name=None,
                  betas=False, m_value=False, make_sample_sheet=False, batch_size=None,
-                 save_uncorrected=False, save_control=True, meta_data_frame=True,
-                 bit='float32', poobah=False, export_poobah=False,
+                 save_uncorrected:bool=False, save_control:bool=True, meta_data_frame:bool=True,
+                 bit='float32', poobah=False, export_poobah:bool=False, do_save_noob:bool=True,
                  poobah_decimals=3, poobah_sig=0.05, low_memory=True,
                  sesame=True, quality_mask=None, pneg_ecdf=False, file_format='pickle', **kwargs):
     """The main CLI processing pipeline. This does every processing step and returns a data set.
@@ -171,7 +171,7 @@ def run_pipeline_ss(sample_sheet: SampleSheet, array_type=None, export=False, ou
     do_infer_channel_switch = None # defaults to sesame(True)
     do_noob = None # defaults to True
     do_nonlinear_dye_bias = True # defaults to sesame(True), but can be False (linear) or None (omit step)
-    do_save_noob = None
+    #do_save_noob = None
     do_mouse = True
     hidden_kwargs = ['pipeline_steps', 'pipeline_exports', 'debug']
     if kwargs != {}:
