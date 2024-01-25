@@ -276,6 +276,7 @@ class SampleSheet():
                 sentrix_id = row['Sentrix_ID'].strip()
                 sentrix_position = row['Sentrix_Position'].strip()
 
+            print(self.data_dir)
             print(_index)
             print(row)
             print(sentrix_id)
@@ -504,7 +505,9 @@ def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.cs
 
     idat_files = sample_dir.rglob('*Grn.idat*') #.gz OK
 
-    _dict = {'GSM_ID': [], 'Sample_Name': [], 'Sentrix_ID': [], 'Sentrix_Position': []}
+    _dict = {'GSM_ID': [], 'Sample_Name': [], 'Sentrix_ID': [], 'Sentrix_Position': [], 
+            'channel_Grn': [], 'channel_Red': [] 
+            }
 
     # additional optional columns
     addl_cols = []
@@ -517,6 +520,8 @@ def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.cs
 
     file_name_error_msg = "This .idat file does not have the right pattern to auto-generate a sample sheet: {0}"
     for idat in idat_files:
+        LOGGER.debug("Found: "+str(idat))
+        
         try:
             filename = os.path.basename(idat)
 
@@ -535,10 +540,16 @@ def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.cs
                     _dict['GSM_ID'].append(split_filename[0])
                     _dict['Sentrix_ID'].append(split_filename[1])
                     _dict['Sentrix_Position'].append(split_filename[2])
+                    
+                    _dict['channel_Grn'].append(os.path.join(str(sample_dir), filename))
+                    _dict['channel_Red'].append(os.path.join(str(sample_dir), re.sub("_Grn(\\.[^/]+)$","_Red\\1",filename)))
                 elif len(split_filename) == 3:
                     _dict['GSM_ID'].append("")
                     _dict['Sentrix_ID'].append(split_filename[0])
                     _dict['Sentrix_Position'].append(split_filename[1])
+                    
+                    _dict['channel_Grn'].append(os.path.join(str(sample_dir), filename))
+                    _dict['channel_Red'].append(os.path.join(str(sample_dir), re.sub("_Grn(\\.[^/]+)$","_Red\\1",filename)))
                 else:
                     raise ValueError(file_name_error_msg.format(idat))
                 
@@ -549,6 +560,8 @@ def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.cs
 
         except:
             raise ValueError(file_name_error_msg.format(idat))
+
+    print(_dict)
 
     if matrix_file:
         _dict['Sample_Name'] = sample_names_from_matrix(dir_path, _dict['GSM_ID'])
