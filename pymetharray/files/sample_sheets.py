@@ -540,19 +540,16 @@ def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.cs
                     _dict['GSM_ID'].append(split_filename[0])
                     _dict['Sentrix_ID'].append(split_filename[1])
                     _dict['Sentrix_Position'].append(split_filename[2])
-                    
-                    _dict['channel_Grn'].append(os.path.join(str(sample_dir), filename))
-                    _dict['channel_Red'].append(os.path.join(str(sample_dir), re.sub("_Grn(\\.[^/]+)$","_Red\\1",filename)))
                 elif len(split_filename) == 3:
                     _dict['GSM_ID'].append("")
                     _dict['Sentrix_ID'].append(split_filename[0])
                     _dict['Sentrix_Position'].append(split_filename[1])
-                    
-                    _dict['channel_Grn'].append(os.path.join(str(sample_dir), filename))
-                    _dict['channel_Red'].append(os.path.join(str(sample_dir), re.sub("_Grn(\\.[^/]+)$","_Red\\1",filename)))
                 else:
                     raise ValueError(file_name_error_msg.format(idat))
-                
+
+                _dict['channel_Grn'].append(os.path.join(str(sample_dir), filename))
+                _dict['channel_Red'].append(os.path.join(str(sample_dir), re.sub("_Grn(\\.[^/]+)$","_Red\\1",filename)))
+
                 if sample_type:
                     _dict['Sample_Type'].append(sample_type)
                 if sample_sub_type:
