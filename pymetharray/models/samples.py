@@ -2,6 +2,8 @@
 import logging
 from pathlib import PurePath, Path
 from urllib.parse import urlparse, urlunparse
+import re
+from beartype import beartype
 
 LOGGER = logging.getLogger(__name__)
 REQUIRED = ['Sentrix_ID', 'Sentrix_Position', 'SentrixBarcode_A', 'SentrixPosition_A', 'Control',
@@ -33,7 +35,10 @@ Keyword Arguments:
         well
     """
 
-    def __init__(self, data_dir, sentrix_id, sentrix_position, **addl_fields):
+    @beartype
+    def __init__(self, data_dir: str, sentrix_id: str, sentrix_position: str, 
+                channel_grn: str, channel_red: str, 
+                **addl_fields):
         self.data_dir = data_dir
         self.sentrix_id = sentrix_id
         self.sentrix_position = sentrix_position
@@ -49,7 +54,6 @@ Keyword Arguments:
                 if field[0].isdigit():
                     new_field_name = field[1:]
                 if not field.isalnum(): # letters or numbers, or caps. no spaces or unicode
-                    import re
                     new_field_name = re.sub(r'\W+', '', new_field_name)
                 setattr(self, new_field_name, addl_fields[field])
                 self.renamed_fields[field] = new_field_name

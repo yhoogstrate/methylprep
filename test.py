@@ -30,13 +30,23 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 from pymetharray.files import create_sample_sheet
-ss = create_sample_sheet('cache/', output_file='samplesheet.csv', output_path = ".")
-
-"""
 ss = create_sample_sheet('cache/', output_file='cache/samplesheet.csv', output_path = ".")
 
+print("")
+print("")
 
-ss.build_samples()
+
+for sample in ss:
+    print(sample)
+    print(type(sample).__name__)
+    print("")
+    
+    ds = RawDataset(sls[0])
+
+
+"""
+
+
 sls = ss.get_samples()
 
 from pymetharray.models.raw_dataset import *

@@ -231,11 +231,19 @@ class SampleSheet():
         """Retrieves Sample objects from the processed sample sheet rows,
         building them if necessary."""
         if not self.__samples:
-            self.build_samples()
+            raise Exception("invoked in wrong order, build_samples should have been ran earlier")
         
         logging.debug("returning "+str(len(self.__samples)) + " samples in a list")
         
         return self.__samples
+    
+    
+    def __iter__(self):
+        if not self.__samples:
+            raise Exception("invoked in wrong order, build_samples should have been ran earlier")
+
+        for sample in self.__samples:
+            yield sample
 
     def get_sample(self, sample_name):
         """ scans all samples for one matching sample_name, if provided.
@@ -257,7 +265,9 @@ class SampleSheet():
 
         return candidates[0]
 
-    def build_samples(self):
+
+    @beartype
+    def build_samples(self) -> int:
         """Builds Sample objects from the processed sample sheet rows.
 
         Added to Sample as class_method: if the idat file is not in the same folder, (check if exists!) looks recursively for that filename and updates the data_dir for that Sample.
@@ -290,6 +300,8 @@ class SampleSheet():
                 data_dir=self.data_dir,  # this assumes the .idat files are in the same folder with the samplesheet.
                 sentrix_id=sentrix_id,
                 sentrix_position=sentrix_position,
+                channel_grn=row['channel_Grn'].strip(),
+                channel_red=row['channel_Red'].strip(),
                 **row,
             )
             if sample.renamed_fields != {}:
@@ -297,7 +309,9 @@ class SampleSheet():
             self.fields.update(sample.fields)
             self.__samples.append(sample)
     
-        logging.debug(str(self.__samples))
+        logging.debug("Has built: " + str(len(self.__samples)) + " samples")
+        
+        return len(self.__samples)
 
     def contains_column(self, column_name):
         """ helper function to determine if sample_sheet contains a specific column, such as GSM_ID.
