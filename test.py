@@ -30,6 +30,9 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 from pymetharray.files import create_sample_sheet
+ss = create_sample_sheet('cache/', output_file='samplesheet.csv', output_path = ".")
+
+"""
 ss = create_sample_sheet('cache/', output_file='cache/samplesheet.csv', output_path = ".")
 
 
@@ -42,4 +45,4 @@ sls[0].get_filepath("idat")
 
 #ds1 = RawDataset(sls[0])
 ds1 = RawDataset(12334456)
-
+"""

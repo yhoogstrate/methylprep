@@ -6,6 +6,8 @@ import logging
 from pathlib import Path, PurePath
 import pandas as pd
 import re
+from _io import BufferedReader
+
 # App
 from ..models import Sample
 from ..utils import get_file_object, reset_file
@@ -189,8 +191,9 @@ class SampleSheet():
         with get_file_object(filepath_or_buffer) as sample_sheet_fh:
             self.read(sample_sheet_fh)
 
+    @beartype
     @staticmethod
-    def is_sample_sheet(filepath_or_buffer):
+    def is_sample_sheet(filepath_or_buffer) -> bool:
         """Checks if the provided file-like object is a valid sample sheet.
 
         Method:
@@ -215,8 +218,9 @@ class SampleSheet():
 
         return False
 
+    @beartype
     @staticmethod
-    def is_valid_csv(filepath_or_buffer):
+    def is_valid_csv(filepath_or_buffer) -> bool:
         try:
             data_frame = pd.read_csv(filepath_or_buffer, header=None, nrows=25)
             return True
@@ -272,6 +276,12 @@ class SampleSheet():
                 sentrix_id = row['Sentrix_ID'].strip()
                 sentrix_position = row['Sentrix_Position'].strip()
 
+            print(_index)
+            print(row)
+            print(sentrix_id)
+            print(sentrix_position)
+            print("---")
+
             if not (sentrix_id and sentrix_position):
                 continue
 
@@ -295,7 +305,9 @@ class SampleSheet():
             return True
         return False
 
-    def read(self, sample_sheet_file):
+
+    @beartype
+    def read(self, sample_sheet_file: BufferedReader) -> int:
         """Validates and reads a sample sheet file, building a DataFrame from the parsed rows.
 
         Method:
@@ -379,7 +391,11 @@ class SampleSheet():
         if self.alt_headers:
             self.rename_alt_headers()
         
+        self.build_samples()
+        
         LOGGER.debug(str(self.__data_frame))
+        
+        return len(self.__data_frame)
 
     def rename_alt_headers(self):
         columns = {'SentrixBarcode_A':'Sentrix_ID','SentrixPosition_A':'Sentrix_Position'}
@@ -547,6 +563,7 @@ def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.cs
         exp_path = (PurePath(dir_path, output_file))
     else:
         exp_path = (PurePath(str(output_path), output_file)) # e.g. for storage of idats on read only mount points
+    LOGGER.debug("final output file: "+str(exp_path))
     df.to_csv(path_or_buf=exp_path,index=False)
 
     LOGGER.info(f"[!] Created sample sheet: {exp_path} with {len(_dict['GSM_ID'])} GSM_IDs")
