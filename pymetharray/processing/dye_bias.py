@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import scipy
 # App
-import methylprep
+import pymetharray
 
 __all__ = ['nonlinear_dye_bias_correction']
 
