@@ -42,9 +42,22 @@ for sample in ss:
     print("")
 
 
+"""
+from urllib.request import Request, urlopen
+url="https://s3.amazonaws.com/array-manifest-files/HumanMethylationEPIC_manifest_v2.csv.gz"
+req = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+
+web_byte = urlopen(req).read()
+"""
+
+"""
+from pymetharray.utils.files import download_file
+download_file("HumanMethylationEPIC_manifest_v2.csv.gz", "https://s3.amazonaws.com/array-manifest-files", "/tmp")
+
+"""
+
 from pymetharray.processing.pipeline import run_pipeline_ss
 run_pipeline_ss(ss)
-
 
 
 """

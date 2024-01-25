@@ -6,6 +6,7 @@ import shutil
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 import ssl
+import certifi
 
 
 __all__ = [
@@ -76,8 +77,10 @@ def download_file(filename, src_url, dest_dir, overwrite=False):
     MacOS doesn't have ceritifi installed by default."""
     dir_path = make_path_like(dest_dir)
     dest_path = dir_path.joinpath(filename)
-    req = Request(src_url + "/" + filename, headers={'User-Agent': 'Mozilla/5.0'})
-
+    
+    LOGGER.debug("Downloading file: "+src_url + " => " + dest_dir + "/" + filename)
+    req = Request(src_url, headers={'User-Agent': 'Mozilla/5.0'})
+    
     if not dest_path.exists():
         ensure_directory_exists(dest_dir)
     elif not overwrite:
