@@ -16,7 +16,7 @@ from .array_express import(
     ae_download,
     ae_metadata
 )
-from methylprep import run_pipeline
+from pymetharray import run_pipeline
 
 
 LOGGER = logging.getLogger(__name__)

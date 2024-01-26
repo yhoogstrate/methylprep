@@ -60,7 +60,7 @@ import subprocess
 from .miniml import sample_sheet_from_miniml, sample_sheet_from_idats, convert_miniml
 # cannot relative-import here because process_data uses geo.py.
 #from .process_data import confirm_dataset_contains_idats, get_attachment_info, run_series
-import methylprep.download.process_data
+import pymetharray.download.process_data
 
 __all__ = [
     'geo_download',
@@ -393,7 +393,7 @@ def geo_metadata(geo_id, series_path, geo_platforms, path):
 
 
 def pipeline_find_betas_any_source(**kwargs):
-    """beta_bake: Sets up a script to run methylprep that saves directly to path or S3.
+    """beta_bake: Sets up a script to run pymetharray that saves directly to path or S3.
 The slowest part of processing GEO datasets is downloading, so this handles that.
 
 STEPS
@@ -539,7 +539,7 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
             LOGGER.info(f"Found {len(extracted_files)} IDATs for {geo_id}.")
             try:
                 # dict_only: should download IDATs without processing them.
-                download_success = methylprep.download.process_data.run_series(geo_id,
+                download_success = pymetharray.download.process_data.run_series(geo_id,
                     working.name,
                     dict_only=True,
                     batch_size=BATCH_SIZE,
@@ -678,7 +678,7 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
 def download_geo_processed(geo_id, working, verbose=False, use_headers=False):
     """Uses methylprep/methylcheck to get processed beta values.
     use_headers: if True, it will use the series_matrix headers to create a samplesheet instead of MiNiML file, which is faster,
-    but lacks Sentrix_ID and Sentrix_Position data. But this is only needed for methylprep process. In this case, the
+    but lacks Sentrix_ID and Sentrix_Position data. But this is only needed for pymetharray process. In this case, the
     meta data and betas are keyed using GSM_IDs instead."""
     filename_keywords = ['matrix', 'processed', 'signals', 'intensities', 'normalized', 'intensity', 'raw_data', 'mean', 'average', 'beta']
     filename_exclude_keywords = ['RNA','Illumina']
@@ -912,7 +912,7 @@ def download_geo_processed(geo_id, working, verbose=False, use_headers=False):
             LOGGER.info(f"The {geo_id}_family.xml miniml file for this series contains multiple ({len(file_parts)}) files.")
 
         try:
-            # methylprep.download.convert_miniml
+            # pymetharray.download.convert_miniml
             local_files = convert_miniml(geo_id, data_dir=working.name, merge=False, download_it=True, extract_controls=False, require_keyword=None, sync_idats=False, verbose=verbose)
             # HERE -- copy all of these (.xml files) into the S3 output folder
             gsm_files = []
@@ -1063,8 +1063,8 @@ returns:
                 if platform in str(html):
                     ROW['platform'] = platform
                     break
-            usable = methylprep.download.process_data.confirm_dataset_contains_idats(gse) # True|False
-            info = methylprep.download.process_data.get_attachment_info(gse) # list of dicts for each file with name, link, size
+            usable = pymetharray.download.process_data.confirm_dataset_contains_idats(gse) # True|False
+            info = pymetharray.download.process_data.get_attachment_info(gse) # list of dicts for each file with name, link, size
             # prefill, so csv is square; always 3 file spots saved
             for i in range(3):
                 ROW[f'file_name_{i}'] = ''
@@ -1098,7 +1098,7 @@ returns:
 def samplesheet_from_series_matrix(df):
     """input: header_df from methylcheck.read_series_matrix.
     This approach matches meta-data with sample betas without needing sentrix_ids. Key is GSMxxxx.
-    This won't support methylprep process function, but fine for all post-process functions needing phenotype data.
+    This won't support pymetharray process function, but fine for all post-process functions needing phenotype data.
     This parses multiple Characteristics columns into separate colummns in dataframe."""
     missing = ['Sentrix_ID', 'Sentrix_Position']
     columns = {
