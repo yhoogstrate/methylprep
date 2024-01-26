@@ -84,7 +84,9 @@ Keyword Arguments:
             'Control': 'Control',
         })
 
-    def __str__(self):
+
+    @beartype
+    def __str__(self) -> str:
         return f'{self.sentrix_id}_{self.sentrix_position}'
 
     @property
