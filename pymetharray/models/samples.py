@@ -35,6 +35,10 @@ Keyword Arguments:
         pool
         well
     """
+    
+    _export_filepath = None
+    _export_filepath_header = None
+
 
     @beartype
     def __init__(self, data_dir: str, sentrix_id: str, sentrix_position: str, 
@@ -90,8 +94,8 @@ Keyword Arguments:
         return f'{self.sentrix_id}_{self.sentrix_position}'
 
     @property
-    def base_filename(self):
-        return f'{self.sentrix_id}_{self.sentrix_position}'
+    def base_filename(self) -> Path:
+        return Path(f'{self.sentrix_id}_{self.sentrix_position}')
 
     @property
     def alternate_base_filename(self):
@@ -137,7 +141,7 @@ Keyword Arguments:
         _suffix = ''
         if suffix is not None:
             _suffix = f'_{suffix}'
-
+        
         filename_to_match = f'{self.base_filename}{_suffix}.{extension}'
         for zip_filename in zip_reader.file_names:
             if not zip_filename.endswith('.idat'):
@@ -146,6 +150,7 @@ Keyword Arguments:
                 # this is packed within the zipfile still, but zip_reader can fetch it.
                 LOGGER.info(zip_reader.get_file_info(zip_filename))
                 return zip_reader.get_file(zip_filename, match_partial=False)
+
 
     def _build_and_verify_path(self, filename, alt_filename=None, allow_compressed=False):
         """
@@ -165,10 +170,10 @@ Keyword Arguments:
         if Path(same_dir_path).is_file():
             # this idat file is in the same folder, no more searching needed.
             return same_dir_path
-
+        
         if allow_compressed and Path(same_dir_path.with_suffix('.gz')).is_file():
             return same_dir_path
-
+        
         # otherwise, do a recursive search for this file and return the first path found.
         #file_pattern = f'{self.data_dir}/**/{filename}'
         #file_matches = glob(file_pattern, recursive=True)
@@ -196,7 +201,15 @@ Keyword Arguments:
 
 
     @beartype
-    def set_export_filepath(self, export_filepath: Path) -> bool:
+    def set_export_filepath(self, export_filepath: Path, force:bool=False) -> bool:
+        LOGGER.debug(f"Sample [{self}]: setting export_filepath to {export_filepath}")
+        
+        if self._export_filepath is not None:
+            if not force:
+                raise AttributeError(f"Sample [{self}] already has _export_filepath being set (to: [{export_filepath}]) - use force=True to force overwrite")
+            else:
+                LOGGER.debug(f" - explicitly overwriting former location: {self.__export_filepath} and updating file contents")
+        
         headers = {}
         with open(export_filepath, "r") as fh_in:
             for line in fh_in:
@@ -208,7 +221,9 @@ Keyword Arguments:
             return False
         else:
             self._export_filepath = export_filepath
+        
         return True
+
 
     @beartype
     def set_export_filepath_headers(self, headers: dict) -> bool:

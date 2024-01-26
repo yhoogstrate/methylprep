@@ -23,28 +23,26 @@ pytest tests
 
 mkdir -p cache
 
+rm -rf cache/GSM6379997_203927450093_R01C01_Red.idat
+rm -rf cache/GSM6379997_203927450093_R01C01_Grn.idat
+rm -rf cache/GSM6379998_203927450107_R07C01_Grn.idat
+rm -rf cache/GSM6379998_203927450107_R07C01_Red.idat
+
 rm -rf cache/GSM6379997_203927450093_R01C01_Red.idat.gz
 rm -rf cache/GSM6379997_203927450093_R01C01_Grn.idat.gz
+rm -rf cache/GSM6379998_203927450107_R07C01_Grn.idat.gz
+rm -rf cache/GSM6379998_203927450107_R07C01_Red.idat.gz
 
 wget https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM6379nnn/GSM6379997/suppl/GSM6379997%5F203927450093%5FR01C01%5FRed.idat.gz --output-document=cache/GSM6379997_203927450093_R01C01_Red.idat.gz
 wget https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM6379nnn/GSM6379997/suppl/GSM6379997%5F203927450093%5FR01C01%5FGrn.idat.gz --output-document=cache/GSM6379997_203927450093_R01C01_Grn.idat.gz
-
-gunzip cache/GSM6379997_203927450093_R01C01_Red.idat.gz
-gunzip cache/GSM6379997_203927450093_R01C01_Grn.idat.gz
-
-
-
-rm cache/GSM6379998_203927450107_R07C01_Grn.idat.gz
-rm cache/GSM6379998_203927450107_R07C01_Red.idat.gz
-
 wget https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM6379nnn/GSM6379998/suppl/GSM6379998_203927450107_R07C01_Grn.idat.gz --output-document=cache/GSM6379998_203927450107_R07C01_Grn.idat.gz
 wget https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM6379nnn/GSM6379998/suppl/GSM6379998_203927450107_R07C01_Red.idat.gz --output-document=cache/GSM6379998_203927450107_R07C01_Red.idat.gz
 
+gunzip cache/GSM6379997_203927450093_R01C01_Red.idat.gz
+gunzip cache/GSM6379997_203927450093_R01C01_Grn.idat.gz
 gunzip cache/GSM6379998_203927450107_R07C01_Grn.idat.gz
 gunzip cache/GSM6379998_203927450107_R07C01_Red.idat.gz
 
-
-python
 
 """
 
@@ -68,7 +66,7 @@ for sample in ss:
     sample.set_export_filepath(Path("cache/203927450093_R01C01_processed.csv"))
 
 
-"""
+
 from pymetharray.processing.pipeline import run_pipeline_ss
 run_pipeline_ss(ss,
 
@@ -84,6 +82,6 @@ run_pipeline_ss(ss,
     do_save_noob = False
     
     )
-"""
+
 
 

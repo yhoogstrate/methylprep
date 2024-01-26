@@ -259,6 +259,8 @@ def run_pipeline_ss(sample_sheet: SampleSheet, array_type=None, export=False, ou
             unmatched_samples = [_sample for _sample in sample_name if _sample not in possible_sample_names]
             raise SystemExit(f"Your sample_name filter does not match the samplesheet; these samples were not found: {unmatched_samples}")
 
+
+    # below creates batches, should become separate function
     batches = []
     batch = []
     sample_id_counter = 1
@@ -301,6 +303,8 @@ def run_pipeline_ss(sample_sheet: SampleSheet, array_type=None, export=False, ou
 
             batch.append(sample.name)
         batches.append(batch)
+
+
 
     temp_data_pickles = []
     control_snps = {}
@@ -347,6 +351,9 @@ def run_pipeline_ss(sample_sheet: SampleSheet, array_type=None, export=False, ou
                     output_path = data_container.sample.get_export_filepath(extension=suffix)
                 else:
                     output_path = data_container.sample.get_export_filepath(external_path = output_dir, extension=suffix)
+                
+                sample.set_export_filepath(Path(output_path), force=True) # always overwrite - new file
+                
                 
                 data_container.export(output_path)
                 export_paths.add(output_path)

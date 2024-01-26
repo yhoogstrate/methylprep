@@ -453,7 +453,8 @@ class SampleSheet():
         return meta_frame
 
 
-def get_sample_sheet(dir_path, filepath=None):
+@beartype
+def get_sample_sheet(dir_path, filepath=None) -> SampleSheet:
     """Generates a SampleSheet instance for a given directory of processed data.
 
     Arguments:
