@@ -1,11 +1,14 @@
-
 # pymethyarray:  python package for processing for Illumina BeadChips
 
-`pymetharray` is a fork of the `methylprep`, whereas `methylprep` is a python package for processing Illumina methylation array data.
+`pymetharray` is a fork of the python package, `methylprep` which became unmaintained.
+As such, `pymetharray` is a python package for processing Illumina methylation array data.
+It primarily serves as API interface for embedded array classifiers rather than direct
+analysis, for which different optimizations and data structures were needed. Some
+behaviour will break and become backwards incompatible.
+
 Major difference in design philosopy:
  - Input is considered per idat file, not per array or per dataset
  - As such, API is restructured and not backwards compatible
-
 
 View the former docs on [ReadTheDocs.](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/)
 
@@ -52,12 +55,20 @@ You should install all three components, as they work together. The parts includ
 `methylprep` maintains configuration files for your Python package manager of choice: [pipenv](https://pipenv.readthedocs.io/en/latest/) or [pip](https://pip.pypa.io/en/stable/). Conda install is coming soon.
 
 ```shell
->>> pip install methylprep
+>>> git clone https://github.com/yhoogstrate/pymetharray
+>>> git checkout -b dev origin/dev
+>>> cd pymetharray
+>>> virtualenv -p python3 .venv
+>>> source .venv/bin/activate
+>>> pip install .
 ```
 
-or if you want to install all three packages at once:
-```shell
->>> pip install methylsuite
+## Testing code
+
+```
+>>> source .venv/bin/activate
+>>> pip install pytest
+>>> pytest
 ```
 
 ## Tutorials and Guides
