@@ -13,6 +13,7 @@ from ..files import find_sample_sheet, create_sample_sheet, SampleSheet
 
 LOGGER = logging.getLogger(__name__)
 
+
 def check_array_folders(data_dir, verbose=True):
     """Confirms a folder's idats are separated into sub-folders by array_type, but does not move them for you.
     Should deal with GEO multi-array packages. beta_bake realiably splits IDATs by array type for you, as of v1.5.6."""
