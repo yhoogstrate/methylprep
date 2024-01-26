@@ -49,6 +49,9 @@ python
 """
 
 
+from pathlib import Path
+
+
 import os
 if os.path.exists("/home/youri/.cache/pymetharray/HumanMethylationEPIC_manifest_v2.csv.gz"):
     os.remove("/home/youri/.cache/pymetharray/HumanMethylationEPIC_manifest_v2.csv.gz")
@@ -62,8 +65,10 @@ from pymetharray.files import create_sample_sheet
 ss = create_sample_sheet('cache/', output_file='cache/samplesheet.csv', output_path = ".")
 for sample in ss:
     print(" - Sample: "+str(sample))
+    sample.set_export_filepath(Path("cache/203927450093_R01C01_processed.csv"))
 
 
+"""
 from pymetharray.processing.pipeline import run_pipeline_ss
 run_pipeline_ss(ss,
 
@@ -79,4 +84,6 @@ run_pipeline_ss(ss,
     do_save_noob = False
     
     )
+"""
+
 

@@ -3,6 +3,7 @@ import logging
 from pathlib import PurePath, Path
 from urllib.parse import urlparse, urlunparse
 import re
+from pathlib import Path
 from beartype import beartype
 
 LOGGER = logging.getLogger(__name__)
@@ -190,3 +191,33 @@ Keyword Arguments:
     def get_export_filepath(self, extension='csv', external_path=None):
         """ Called by run_pipeline to find the folder/filename to export data as CSV, but CSV file doesn't exist yet."""
         return self.get_filepath(extension, 'processed', verify=False, external_path=external_path)
+
+
+    @beartype
+    def set_export_filepath(self, export_filepath: Path) -> bool:
+        headers = {}
+        with open(export_filepath, "r") as fh_in:
+            for line in fh_in:
+                if line[0] != "#":
+                    headers = {_:True for _ in line.strip().split(",")}
+                    break
+        
+        if not self.set_export_filepath_headers(headers):
+            return False
+        else:
+            self._export_filepath = export_filepath
+        return True
+
+    @beartype
+    def set_export_filepath_headers(self, headers: dict) -> bool:
+        if 'IlmnID' not in headers:
+            raise ValueError("IlmnID not defined")
+        
+        for key, value in headers.items():
+            if not isinstance(value, bool):
+                raise ValueError(f"{key} is not a boolean: {value}")
+        
+        self._export_filepath_headers = headers
+        
+        return True
+    
