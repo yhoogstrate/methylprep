@@ -112,3 +112,7 @@ docs/example_data/GSE69852/*.pkl
 docs/example_data/epic_plus/*.pkl
 docs/example_data/epic_plus/202651080072
 docs/example_data/E-MTAB-6331
+*.idat
+*.pkl
+*.gz
+/cache
