@@ -3,9 +3,10 @@ import gzip
 import logging
 from pathlib import Path, PurePath
 import shutil
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 from urllib.error import URLError
 import ssl
+import certifi
 
 
 __all__ = [
@@ -76,7 +77,10 @@ def download_file(filename, src_url, dest_dir, overwrite=False):
     MacOS doesn't have ceritifi installed by default."""
     dir_path = make_path_like(dest_dir)
     dest_path = dir_path.joinpath(filename)
-
+    
+    LOGGER.debug("Downloading file: " + str(src_url) + " => " + str(dest_dir) + "/" + str(filename))
+    req = Request(src_url, headers={'User-Agent': 'Mozilla/5.0'})
+    
     if not dest_path.exists():
         ensure_directory_exists(dest_dir)
     elif not overwrite:
@@ -85,7 +89,7 @@ def download_file(filename, src_url, dest_dir, overwrite=False):
         #raise FileExistsError(f'File exists: {dest_path}') # -- raising an error here terminates lambda, except that pipeline_s3 catches it.
         return
     try:
-        with urlopen(src_url) as response:
+        with urlopen(req) as response:
             with open(dest_path, 'wb') as out_file:
                 shutil.copyfileobj(response, out_file)
     except URLError as e:
@@ -95,7 +99,7 @@ def download_file(filename, src_url, dest_dir, overwrite=False):
         try:
             LOGGER.info("retrying without SSL")
             context = ssl._create_unverified_context()
-            with urlopen(src_url, context=context) as response:
+            with urlopen(req, context=context) as response:
                 with open(dest_path, 'wb') as out_file:
                     shutil.copyfileobj(response, out_file)
         except URLError as e:
