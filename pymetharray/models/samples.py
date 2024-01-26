@@ -38,8 +38,8 @@ Keyword Arguments:
     
     _export_filepath = None
     _export_filepath_header = None
-
-
+    
+    
     @beartype
     def __init__(self, data_dir: str, sentrix_id: str, sentrix_position: str, 
                 channel_grn: str, channel_red: str, 
@@ -208,7 +208,7 @@ Keyword Arguments:
             if not force:
                 raise AttributeError(f"Sample [{self}] already has _export_filepath being set (to: [{export_filepath}]) - use force=True to force overwrite")
             else:
-                LOGGER.debug(f" - explicitly overwriting former location: {self.__export_filepath} and updating file contents")
+                LOGGER.debug(f" - forced overwriting former path: {self._export_filepath} and updating headers")
         
         headers = {}
         with open(export_filepath, "r") as fh_in:

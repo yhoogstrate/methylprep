@@ -84,4 +84,9 @@ run_pipeline_ss(ss,
     )
 
 
-
+"""
+# should trigger error - and indeed it does
+for sample in ss:
+    print(" - Sample: "+str(sample))
+    sample.set_export_filepath(Path("cache/203927450093_R01C01_processed.csv"))
+"""

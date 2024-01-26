@@ -5,6 +5,7 @@ import numpy as np
 import struct
 from pprint import pprint
 import logging
+from beartype import beartype
 
 # App
 from ..utils import (
@@ -131,17 +132,19 @@ class IdatDataset():
     Raises:
         ValueError: The IDAT file has an incorrect identifier or version specifier.
     """
+    
+    @beartype
     def __init__(
         self,
         filepath_or_buffer,
         channel,
         idat_id=DEFAULT_IDAT_FILE_ID,
         idat_version=DEFAULT_IDAT_VERSION,
-        verbose=False,
-        std_dev=False,
-        nbeads=False,
+        verbose:bool=False,
+        std_dev:bool=False,
+        nbeads:bool=False,
         bit='float32',
-        header_only=False
+        header_only:bool=False
     ):
         """Initializes the IdatDataset, reads and parses the IDAT file."""
         self.verbose = verbose
@@ -170,9 +173,10 @@ class IdatDataset():
             if self.verbose:
                 self.meta(idat_file)
 
+    @beartype
     @staticmethod
     @read_and_reset
-    def is_idat_file(idat_file, expected):
+    def is_idat_file(idat_file, expected) -> bool:
         """Checks if the provided file has the correct identifier.
 
         Arguments:
@@ -186,9 +190,10 @@ class IdatDataset():
         file_type = read_char(idat_file, len(expected))
         return file_type.lower() == expected.lower()
 
+    @beartype
     @staticmethod
     @read_and_reset
-    def is_correct_version(idat_file, expected):
+    def is_correct_version(idat_file, expected) -> bool:
         """Checks if the provided file has the correct version.
 
         Arguments:
