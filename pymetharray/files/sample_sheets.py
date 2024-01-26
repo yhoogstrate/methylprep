@@ -234,7 +234,7 @@ class SampleSheet():
         if not self.__samples:
             raise Exception("invoked in wrong order, build_samples should have been ran earlier")
         
-        logging.debug("returning "+str(len(self.__samples)) + " samples in a list")
+        LOGGER.debug("returning %i samples in a list", len(self.__samples))
         
         return self.__samples
     
