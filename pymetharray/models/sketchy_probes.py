@@ -6,7 +6,7 @@ try:
 except ImportError: # py < 3.7
     import pkg_resources
     loader = pkg_resources.resource_filename
-pkg_namespace = 'methylprep.models'
+pkg_namespace = 'pymetharray.models'
 
 try:
     if pkg_resources:
