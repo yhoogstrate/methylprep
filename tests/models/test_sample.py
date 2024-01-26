@@ -1,7 +1,7 @@
 from pathlib import Path
 # App
-from methylprep.models import ArrayType, Channel, Sample, SigSet
-from methylprep.files import Manifest, IdatDataset
+from pymetharray.models import ArrayType, Channel, Sample, SigSet
+from pymetharray.files import Manifest, IdatDataset
 
 class TestSample():
 

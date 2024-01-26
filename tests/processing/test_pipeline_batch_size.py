@@ -1,4 +1,4 @@
-from methylprep.processing import pipeline
+from pymetharray.processing import pipeline
 import pandas as pd
 from pathlib import Path
 import numpy as np

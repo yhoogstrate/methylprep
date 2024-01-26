@@ -4,8 +4,8 @@ import pandas as pd
 from pathlib import Path
 import shutil
 # App
-from methylprep.processing import make_pipeline, run_pipeline
-from methylprep.utils.files import download_file
+from pymetharray.processing import make_pipeline, run_pipeline
+from pymetharray.utils.files import download_file
 #patching
 try:
     # python 3.4+ should use builtin unittest.mock not mock package

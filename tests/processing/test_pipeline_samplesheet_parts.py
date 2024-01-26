@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 # App
-import methylprep
+import pymetharray
 #patching
 import unittest
 try:
@@ -38,7 +38,7 @@ class TestPipeline():
         # CLI not working in unit tests
         #testargs = ["__program__", '-d', test_data_dir, '--no_export', '--sample_name', 'AdultLiver1', 'FetalLiver1', '--minfi', '--betas']
         #with patch.object(sys, 'argv', testargs):
-        test_data_containers = methylprep.run_pipeline(test_data_dir, export=False, sample_name=['AdultLiver1', 'FetalLiver1'])
+        test_data_containers = pymetharray.run_pipeline(test_data_dir, export=False, sample_name=['AdultLiver1', 'FetalLiver1'])
         # spot checking the output.
         test1 = test_data_containers[0]._SampleDataContainer__data_frame
         test1_v162_ref = [

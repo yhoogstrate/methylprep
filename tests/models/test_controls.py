@@ -1,7 +1,7 @@
 # LIb
 import pytest
 # App
-from methylprep.models.controls import ControlType
+from pymetharray.models.controls import ControlType
 
 
 class TestControlType():

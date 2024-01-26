@@ -5,7 +5,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 # App
-import methylprep
+import pymetharray
 
 #patching
 try:
@@ -34,7 +34,7 @@ def sesame_convert(filename, drop_rs=True):
     # sort probes and columns and force floats
     sesame_meth = sesame_meth.sort_index().reindex(sorted(sesame_meth.columns), axis=1).astype(float)
     sesame_unmeth = sesame_unmeth.sort_index().reindex(sorted(sesame_unmeth.columns), axis=1).astype(float)
-    # drop SNPs, so same as methylprep
+    # drop SNPs, so same as pymetharray
     if drop_rs:
         sesame_meth = sesame_meth[~sesame_meth.index.str.startswith('rs')] # dropping SNP probes, which are included in sesame output
         sesame_unmeth = sesame_unmeth[~sesame_unmeth.index.str.startswith('rs')]
@@ -43,7 +43,7 @@ def sesame_convert(filename, drop_rs=True):
     return sesame_meth, sesame_unmeth
 
 @patch("matplotlib.pyplot.show")
-def test_compare_methylprep_sesame__raw_oob_noob_dye(mock_pyplot):
+def test_compare_pymetharray_sesame__raw_oob_noob_dye(mock_pyplot):
     """ this test confirms that these values match closely with sesame:
     - raw meth, raw unmeth
     - oobG, oobR and preprocess_noob_sesame oobG/oobR
@@ -58,11 +58,11 @@ def test_compare_methylprep_sesame__raw_oob_noob_dye(mock_pyplot):
         and dye unmeth values varied in range of -15 to +12, but MEAN was <1."""
     # does not include rs probes, because .methylated DF does not include them for comparison.
 
-    #containers = methylprep.run_pipeline(LOCAL, sesame=True, save_uncorrected=True, low_memory=False, debug=False)
+    #containers = pymetharray.run_pipeline(LOCAL, sesame=True, save_uncorrected=True, low_memory=False, debug=False)
     samp = 1 # '9247377085_R04C02'
     steps = ['infer_channel_switch', 'quality_mask', 'noob', 'dye_bias'] # no poobah 'poobah'
     # debug=True will increase coverage
-    containers = methylprep.processing.pipeline.make_pipeline(LOCAL, steps=steps, exports=None, estimator=None, low_memory=False, debug=True)
+    containers = pymetharray.processing.pipeline.make_pipeline(LOCAL, steps=steps, exports=None, estimator=None, low_memory=False, debug=True)
 
     # will run noob and dye and sesame==True
     s_meth, s_unmeth           = sesame_convert(Path(LOCAL,'sesame_raw.csv'), drop_rs=False)
@@ -83,7 +83,7 @@ def test_compare_methylprep_sesame__raw_oob_noob_dye(mock_pyplot):
     raw_meth_isclose = sum(np.isclose( s_meth['9247377085_R04C02'], m_meth['Meth'], atol=1.0))/len(s_meth)
     raw_unmeth_isclose = sum(np.isclose(s_unmeth['9247377085_R04C02'], m_unmeth['Unmeth'], atol=1.0))/len(s_unmeth)
     if not (-1.5 < raw_meth_mean_diff < 1.5) or not (-1.5 < raw_unmeth_mean_diff < 1.5) or raw_meth_isclose < 0.99 or raw_unmeth_isclose < 0.99:
-        raise AssertionError(f"raw meth/unmeth values differ between sesame and methylprep (expect exact match on 99% or more): meth: ({raw_meth_mean_diff} {raw_meth_isclose}) unmeth: ({raw_unmeth_mean_diff} {raw_unmeth_isclose})")
+        raise AssertionError(f"raw meth/unmeth values differ between sesame and pymetharray (expect exact match on 99% or more): meth: ({raw_meth_mean_diff} {raw_meth_isclose}) unmeth: ({raw_unmeth_mean_diff} {raw_unmeth_isclose})")
     print("preprocess_sesame() raw meth/unmeth match; mean_diff +/- 1.0 unit {raw_meth_isclose} {raw_unmeth_isclose}")
 
     # note that methylated data_frame noob will match sesame, but SDC will be dye-corrected noob.
@@ -112,7 +112,7 @@ def test_compare_methylprep_sesame__raw_oob_noob_dye(mock_pyplot):
            )
     s_oobR = pd.DataFrame(list(s_oobR['U']) + list(s_oobR['M']), columns=['mean_value'])
 
-    data = methylprep.processing.preprocess.preprocess_noob(containers[samp], debug=True, unit_test_oob=True)
+    data = pymetharray.processing.preprocess.preprocess_noob(containers[samp], debug=True, unit_test_oob=True)
 
     oobG_matches = sorted(s_oobG) == sorted(data['oobG'])
     oobR_matches = sorted(s_oobR) == sorted(data['oobR'])
@@ -136,8 +136,8 @@ def test_compare_methylprep_sesame__raw_oob_noob_dye(mock_pyplot):
     #plt.show()
     dye_unmeth_diff = float((s_dye_unmeth - m_dye_unmeth).mean()) # actual: -0.253644
     if dye_meth_diff > 1.0 or dye_unmeth_diff > 1.1: # v1.4x manual testing found a mean diff of ~0.5 and ~1.03 for each.
-        #print(f"WARNING noob + dye corrected values don't match in sesame vs methylprep: meth {dye_meth_diff} unmeth {dye_unmeth_diff} (MEAN)")
-        raise AssertionError(f"noob + dye corrected values don't match in sesame vs methylprep: meth {dye_meth_diff} unmeth {dye_unmeth_diff} (MEAN)")
+        #print(f"WARNING noob + dye corrected values don't match in sesame vs pymetharray: meth {dye_meth_diff} unmeth {dye_unmeth_diff} (MEAN)")
+        raise AssertionError(f"noob + dye corrected values don't match in sesame vs pymetharray: meth {dye_meth_diff} unmeth {dye_unmeth_diff} (MEAN)")
 
     m_betas = (pd.DataFrame(containers[samp]._SampleDataContainer__data_frame['beta_value'])
                .sort_index()
@@ -155,13 +155,13 @@ def test_compare_methylprep_sesame__raw_oob_noob_dye(mock_pyplot):
     if not (-0.001 < beta_diff < 0.001):
         # got -0.001037 beta_diff on 3/30/2021, so barely failed, with a noob+dye diff of -4 or +8.
         # got -0.00004228 beta_diff on 6/14/2021
-        raise AssertionError(f"betas values differ (sesame/methylprep) NOOB + DYE + BETA mean diff: {beta_diff}")
+        raise AssertionError(f"betas values differ (sesame/pymetharray) NOOB + DYE + BETA mean diff: {beta_diff}")
 
 
-def test_open_sesame_betas_vs_methylprep():
+def test_open_sesame_betas_vs_pymetharray():
     """ simplest test: does the openSesame beta output match the run_pipeline beta output? """
     LOCAL = Path('docs/example_data/GSE69852/')
-    m_betas = methylprep.run_pipeline(LOCAL, betas=True, sample_name=['FetalLiver1'])
+    m_betas = pymetharray.run_pipeline(LOCAL, betas=True, sample_name=['FetalLiver1'])
     m_betas = m_betas.sort_index()
     """
     s_betas = (pd.read_csv(Path(LOCAL, 'sesame_open_betas.csv')).set_index('Unnamed: 0').rename(columns=(lambda x: x[1:])).sort_index())
@@ -194,7 +194,7 @@ def test_open_sesame_betas_vs_methylprep():
 library(BiocManager)
 library(sesame)
 library(preprocessCore)
-in_dir = paste0('/Users/mmaxmeister/methylprep/docs/example_data/GSE69852/')
+in_dir = paste0('/Users/mmaxmeister/pymetharray/docs/example_data/GSE69852/')
 
 ssets <- lapply(searchIDATprefixes(in_dir), readIDATpair)
 ssets.noob <- lapply(ssets, noob)

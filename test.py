@@ -11,6 +11,16 @@ pip install uninstall pymetharray
 pip install .
 pip list | grep pymetharray
 
+"""
+
+
+"""
+pytest tests
+"""
+
+
+"""
+
 mkdir -p cache
 
 rm -rf cache/GSM6379997_203927450093_R01C01_Red.idat.gz
@@ -38,8 +48,15 @@ python
 
 """
 
+
+import os
+if os.path.exists("/home/youri/.cache/pymetharray/HumanMethylationEPIC_manifest_v2.csv.gz"):
+    os.remove("/home/youri/.cache/pymetharray/HumanMethylationEPIC_manifest_v2.csv.gz")
+
+
 import logging
 logging.basicConfig(level=logging.DEBUG)
+
 
 from pymetharray.files import create_sample_sheet
 ss = create_sample_sheet('cache/', output_file='cache/samplesheet.csv', output_path = ".")

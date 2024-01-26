@@ -1,6 +1,6 @@
 # App
-from methylprep.models import Channel, Sample, ArrayType, SigSet # MethylationDataset, RawDataset
-from methylprep.files import SampleSheet, Manifest, IdatDataset
+from pymetharray.models import Channel, Sample, ArrayType, SigSet # MethylationDataset, RawDataset
+from pymetharray.files import SampleSheet, Manifest, IdatDataset
 from pathlib import Path
 
 class TestSigSet():

@@ -1,13 +1,13 @@
 #PATH = '/Volumes/LEGX/Barnes/44668_MURMETVEP/204617710009'
 #PATH = '/Volumes/LEGX/Barnes/48230_MURMETVEP/361821/204879580038'
 PATH = 'docs/example_data/mouse'
-import methylprep
+import pymetharray
 from pathlib import Path
 import pandas as pd
 
 def test_mouse_array_for_bugs():
     print('* loading mouse manifest')
-    manifest = methylprep.files.Manifest(methylprep.models.ArrayType('mouse'))
+    manifest = pymetharray.files.Manifest(pymetharray.models.ArrayType('mouse'))
     if not isinstance(manifest.mouse_data_frame, pd.DataFrame):
         raise AssertionError("mouse_data_frame")
     print('* loading one idat pair of files')
@@ -15,12 +15,12 @@ def test_mouse_array_for_bugs():
     red_filepath = Path(PATH, '204879580038_R06C02_Red.idat')
     #red_filepath = Path(PATH, '204617710009_R06C02_Red.idat')
     green_filepath = Path(PATH, '204879580038_R06C02_Grn.idat')
-    green_idat = methylprep.files.IdatDataset(green_filepath, channel=methylprep.models.Channel.GREEN)
-    red_idat = methylprep.files.IdatDataset(red_filepath, channel=methylprep.models.Channel.RED)
+    green_idat = pymetharray.files.IdatDataset(green_filepath, channel=pymetharray.models.Channel.GREEN)
+    red_idat = pymetharray.files.IdatDataset(red_filepath, channel=pymetharray.models.Channel.RED)
     print(f"* GREEN --> {green_filepath.name} -- {green_idat.probe_means.shape}")
     print(f"* RED --> {red_filepath.name} -- {red_idat.probe_means.shape}")
     sample = 1
-    sigset = methylprep.models.SigSet(sample, green_idat, red_idat, manifest, debug=True)
+    sigset = pymetharray.models.SigSet(sample, green_idat, red_idat, manifest, debug=True)
     """ on 2021-08-23, got this:
         II 228271
         IG 17697
@@ -40,21 +40,21 @@ def test_mouse_array_for_bugs():
 
     print("manifest starts:")
     print(f"{sigset.man.shape} {sigset.ctl_man.shape} {sigset.snp_man.shape}") # later: man: (291713, 10) + 1486 = 293199
-    df = methylprep.run_pipeline(PATH, debug=True)
+    df = pymetharray.run_pipeline(PATH, debug=True)
     #print('* raw_dataset')
-    #raw_dataset = methylprep.processing.raw_dataset.RawDataset(sample, green_idat, red_idat)
+    #raw_dataset = pymetharray.processing.raw_dataset.RawDataset(sample, green_idat, red_idat)
     #print('* meth_dataset.unmethylated')
-    #unmethylated = methylprep.models.MethylationDataset.unmethylated(raw_dataset, manifest)
+    #unmethylated = pymetharray.models.MethylationDataset.unmethylated(raw_dataset, manifest)
     #print('* meth_dataset.methylated')
-    #methylated = methylprep.models.MethylationDataset.methylated(raw_dataset, manifest)
+    #methylated = pymetharray.models.MethylationDataset.methylated(raw_dataset, manifest)
     #return green_idat, red_idat
     #grn, red = test_noob_df_same_size()
-    #manifest = methylprep.files.Manifest(methylprep.models.ArrayType('450k'))
+    #manifest = pymetharray.files.Manifest(pymetharray.models.ArrayType('450k'))
     #green_filepath = Path(PATH, '9247377085_R04C02_Grn.idat')
     #red_filepath = Path(PATH, '9247377085_R04C02_Red.idat')
     #print(f"* GREEN --> {green_filepath.name}")
     #print(f"* RED --> {red_filepath.name}")
-    #green_idat = methylprep.files.IdatDataset(green_filepath, channel=methylprep.models.Channel.GREEN)
-    #red_idat = methylprep.files.IdatDataset(red_filepath, channel=methylprep.models.Channel.RED)
+    #green_idat = pymetharray.files.IdatDataset(green_filepath, channel=pymetharray.models.Channel.GREEN)
+    #red_idat = pymetharray.files.IdatDataset(red_filepath, channel=pymetharray.models.Channel.RED)
     #sample = 1
-    #sigset = methylprep.models.SigSet(sample, green_idat, red_idat, manifest, debug=True)
+    #sigset = pymetharray.models.SigSet(sample, green_idat, red_idat, manifest, debug=True)

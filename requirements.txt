@@ -1,6 +1,7 @@
 pyparsing>3
 numpy
 pandas==2.*
+pyarrow
 scipy
 statsmodels
 pytest
