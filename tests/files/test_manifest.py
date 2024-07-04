@@ -1,14 +1,14 @@
 # App
-from methylprep.files import manifests, IdatDataset
-from methylprep.models import ArrayType, Channel, Sample, SigSet
+from pymetharray.files import manifests, IdatDataset
+from pymetharray.models import ArrayType, Channel, Sample, SigSet
 from pathlib import Path
-from methylprep.utils.files import download_file
+from pymetharray.utils.files import download_file
 import pytest
 
 class TestManifest():
     def test_has_correct_path_values(self):
-        assert manifests.MANIFEST_DIR_NAME == '.methylprep_manifest_files'
-        assert manifests.MANIFEST_DIR_PATH == '~/.methylprep_manifest_files'
+        assert manifests.MANIFEST_DIR_NAME == '.cache/pymetharray'
+        assert manifests.MANIFEST_DIR_PATH == '~/.cache/pymetharray'
         assert manifests.MANIFEST_REMOTE_PATH == 'https://s3.amazonaws.com/array-manifest-files/'
 
     def __test_control_probe_selection(self):
@@ -31,9 +31,9 @@ class TestManifest():
         download_file now defaults to non-SSL if SSL fails, with warning to user."""
         test_filename = 'unittest.txt'
         test_s3_bucket = 'https://array-manifest-files.s3.amazonaws.com'  # 's3://array-manifest-files'
-        dest_dir = ''
+        dest_dir = Path('.')
         # use the .download_file() method in files.py to test the download step specifically. this is called by Manifests() class.
-        download_file(test_filename, test_s3_bucket, dest_dir, overwrite=False)
+        download_file(test_filename, test_s3_bucket + "/" + test_filename, dest_dir, overwrite=False)
         # in testing mode, this should not exist, and should get deleted right after each successful test.
         if not Path(dest_dir,test_filename).is_file():
             raise AssertionError()

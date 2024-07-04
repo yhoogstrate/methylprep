@@ -5,6 +5,7 @@ import numpy as np
 import struct
 from pprint import pprint
 import logging
+from beartype import beartype
 
 # App
 from ..utils import (
@@ -21,7 +22,7 @@ from ..utils import (
 )
 
 LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel( logging.WARNING )
+LOGGER.setLevel( logging.INFO )
 
 __all__ = ['IdatDataset']
 
@@ -131,16 +132,19 @@ class IdatDataset():
     Raises:
         ValueError: The IDAT file has an incorrect identifier or version specifier.
     """
+    
+    @beartype
     def __init__(
         self,
         filepath_or_buffer,
         channel,
         idat_id=DEFAULT_IDAT_FILE_ID,
         idat_version=DEFAULT_IDAT_VERSION,
-        verbose=False,
-        std_dev=False,
-        nbeads=False,
+        verbose:bool=False,
+        std_dev:bool=False,
+        nbeads:bool=False,
         bit='float32',
+        header_only:bool=False
     ):
         """Initializes the IdatDataset, reads and parses the IDAT file."""
         self.verbose = verbose
@@ -163,15 +167,16 @@ class IdatDataset():
             if not self.is_correct_version(idat_file, idat_version):
                 raise ValueError('Not a version 3 IDAT file. Unsupported IDAT version.')
 
-            self.probe_means = self.read(idat_file)
+            self.probe_means = self.read(idat_file, header_only)
             if self.overflow_check() is False:
                 LOGGER.warning("IDAT: contains negative probe values (uint16 overflow error)")
             if self.verbose:
                 self.meta(idat_file)
 
+    @beartype
     @staticmethod
     @read_and_reset
-    def is_idat_file(idat_file, expected):
+    def is_idat_file(idat_file, expected) -> bool:
         """Checks if the provided file has the correct identifier.
 
         Arguments:
@@ -185,9 +190,10 @@ class IdatDataset():
         file_type = read_char(idat_file, len(expected))
         return file_type.lower() == expected.lower()
 
+    @beartype
     @staticmethod
     @read_and_reset
-    def is_correct_version(idat_file, expected):
+    def is_correct_version(idat_file, expected) -> bool:
         """Checks if the provided file has the correct version.
 
         Arguments:
@@ -225,7 +231,7 @@ class IdatDataset():
 
         return offsets
 
-    def read(self, idat_file):
+    def read(self, idat_file, header_only = False):
         """Reads the IDAT file and parses the appropriate sections. Joins the
         mean probe intensity values with their Illumina probe ID.
 
@@ -243,6 +249,9 @@ class IdatDataset():
 
         seek_to_section(IdatSectionCode.BARCODE)
         self.barcode = read_string(idat_file)
+
+        seek_to_section(IdatSectionCode.MOSTLY_A)
+        self.label = read_string(idat_file)
 
         seek_to_section(IdatSectionCode.CHIP_TYPE)
         self.chip_type = read_string(idat_file)
@@ -269,50 +278,52 @@ class IdatDataset():
             code_version = read_string(idat_file)
             self.run_info.append( (timestamp, entry_type, parameters, codeblock, code_version) )
 
-        if self.include_std_dev and self.include_n_beads:
-            seek_to_section(IdatSectionCode.STD_DEV)
-            std_devs = npread(idat_file, '<u2', self.n_snps_read)
-            # print(len(probe_means), len(std_devs), len(self.n_beads))
-            data_frame = pd.DataFrame(
-                data={'mean_value':probe_means, 'std_dev':std_devs, 'n_beads':self.n_beads},
-                index=illumina_ids,
-                columns=['mean_value','std_dev','n_beads'],
-                dtype=self.bit, # int16 could work, and reduce memory by 1/2, but some raw values were > 32127 -- without prenormalization, you get negative values back, which breaks stuff.
-            )
+        if not header_only:
+            if self.include_std_dev and self.include_n_beads:
+                seek_to_section(IdatSectionCode.STD_DEV)
+                std_devs = npread(idat_file, '<u2', self.n_snps_read)
+                # print(len(probe_means), len(std_devs), len(self.n_beads))
+                data_frame = pd.DataFrame(
+                    data={'mean_value':probe_means, 'std_dev':std_devs, 'n_beads':self.n_beads},
+                    index=illumina_ids,
+                    columns=['mean_value','std_dev','n_beads'],
+                    dtype=self.bit, # int16 could work, and reduce memory by 1/2, but some raw values were > 32127 -- without prenormalization, you get negative values back, which breaks stuff.
+                )
+            elif self.include_std_dev:
+                seek_to_section(IdatSectionCode.STD_DEV)
+                std_devs = npread(idat_file, '<u2', self.n_snps_read)
+                # print(len(probe_means), len(std_devs))
+                data_frame = pd.DataFrame(
+                    data={'mean_value':probe_means, 'std_dev':std_devs},
+                    index=illumina_ids,
+                    columns=['mean_value','std_dev'],
+                    dtype=self.bit, # int16 could work, and reduce memory by 1/2, but some raw values were > 32127 -- without prenormalization, you get negative values back, which breaks stuff.
+                )
+            elif self.include_n_beads:
+                data_frame = pd.DataFrame(
+                    data={'mean_value':probe_means, 'n_beads':self.n_beads},
+                    index=illumina_ids,
+                    columns=['mean_value','n_beads'],
+                    dtype=self.bit, # int16 could work, and reduce memory by 1/2, but some raw values were > 32127 -- without prenormalization, you get negative values back, which breaks stuff.
+                )
+            else:
+                # casting astype(int) fixes pandas bug reading uint16, by coercing to float32-compatible format.
+                probe_records = dict(zip(illumina_ids, probe_means.astype(int)))
+                data_frame = pd.DataFrame.from_dict(
+                    data=probe_records,
+                    orient='index',
+                    columns=['mean_value'],
+                    dtype=self.bit, # int16 could work, and reduce memory by 1/2, but some raw values were > 32127 -- without prenormalization, you get negative values back, which breaks stuff.
+                )
+                data_frame.index.name = 'illumina_id'
 
-        elif self.include_std_dev:
-            seek_to_section(IdatSectionCode.STD_DEV)
-            std_devs = npread(idat_file, '<u2', self.n_snps_read)
-            # print(len(probe_means), len(std_devs))
-            data_frame = pd.DataFrame(
-                data={'mean_value':probe_means, 'std_dev':std_devs},
-                index=illumina_ids,
-                columns=['mean_value','std_dev'],
-                dtype=self.bit, # int16 could work, and reduce memory by 1/2, but some raw values were > 32127 -- without prenormalization, you get negative values back, which breaks stuff.
-            )
-        elif self.include_n_beads:
-            data_frame = pd.DataFrame(
-                data={'mean_value':probe_means, 'n_beads':self.n_beads},
-                index=illumina_ids,
-                columns=['mean_value','n_beads'],
-                dtype=self.bit, # int16 could work, and reduce memory by 1/2, but some raw values were > 32127 -- without prenormalization, you get negative values back, which breaks stuff.
-            )
+            if self.bit == 'float16':
+                data_frame = data_frame.clip(upper=32127)
+                data_frame = data_frame.astype('int16')
+
+            return data_frame
         else:
-            # casting astype(int) fixes pandas bug reading uint16, by coercing to float32-compatible format.
-            probe_records = dict(zip(illumina_ids, probe_means.astype(int)))
-            data_frame = pd.DataFrame.from_dict(
-                data=probe_records,
-                orient='index',
-                columns=['mean_value'],
-                dtype=self.bit, # int16 could work, and reduce memory by 1/2, but some raw values were > 32127 -- without prenormalization, you get negative values back, which breaks stuff.
-            )
-            data_frame.index.name = 'illumina_id'
-
-        if self.bit == 'float16':
-            data_frame = data_frame.clip(upper=32127)
-            data_frame = data_frame.astype('int16')
-
-        return data_frame
+            return None
 
 
     def meta(self, idat_file):
@@ -352,7 +363,8 @@ class IdatDataset():
 
     def overflow_check(self):
         if hasattr(self, 'probe_means'):
-            if (self.probe_means.values < 0).any():
-                # n_affected = self.probe_means[self.probe_means.mean_value < 0].count().values[0]
-                return False
+            if self.probe_means is not None:
+                if (self.probe_means.values < 0).any():
+                    # n_affected = self.probe_means[self.probe_means.mean_value < 0].count().values[0]
+                    return False
         return True # passes, no misread probes

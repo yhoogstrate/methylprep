@@ -2,6 +2,9 @@
 import logging
 from pathlib import PurePath, Path
 from urllib.parse import urlparse, urlunparse
+import re
+from pathlib import Path
+from beartype import beartype
 
 LOGGER = logging.getLogger(__name__)
 REQUIRED = ['Sentrix_ID', 'Sentrix_Position', 'SentrixBarcode_A', 'SentrixPosition_A', 'Control',
@@ -32,12 +35,20 @@ Keyword Arguments:
         pool
         well
     """
-
-    def __init__(self, data_dir, sentrix_id, sentrix_position, **addl_fields):
+    
+    _export_filepath = None
+    _export_filepath_header = None
+    
+    
+    @beartype
+    def __init__(self, data_dir: str, sentrix_id: str, sentrix_position: str, 
+                channel_grn: str, channel_red: str, 
+                **addl_fields):
         self.data_dir = data_dir
         self.sentrix_id = sentrix_id
         self.sentrix_position = sentrix_position
         self.renamed_fields = {}
+        self.raw_dataset = None
 
         # any OTHER sample_sheet columns are passed in exactly as they appear, if possible, and if column names exist.
         # these will pass into the meta_data pkl created, and any renamed fields must be noted in a lookup.
@@ -49,7 +60,6 @@ Keyword Arguments:
                 if field[0].isdigit():
                     new_field_name = field[1:]
                 if not field.isalnum(): # letters or numbers, or caps. no spaces or unicode
-                    import re
                     new_field_name = re.sub(r'\W+', '', new_field_name)
                 setattr(self, new_field_name, addl_fields[field])
                 self.renamed_fields[field] = new_field_name
@@ -78,12 +88,14 @@ Keyword Arguments:
             'Control': 'Control',
         })
 
-    def __str__(self):
+
+    @beartype
+    def __str__(self) -> str:
         return f'{self.sentrix_id}_{self.sentrix_position}'
 
     @property
-    def base_filename(self):
-        return f'{self.sentrix_id}_{self.sentrix_position}'
+    def base_filename(self) -> Path:
+        return Path(f'{self.sentrix_id}_{self.sentrix_position}')
 
     @property
     def alternate_base_filename(self):
@@ -93,7 +105,7 @@ Keyword Arguments:
         else:
             return f'{self.sentrix_id}_{self.sentrix_position}'
 
-    def get_filepath(self, extension, suffix=None, verify=True):
+    def get_filepath(self, extension, suffix=None, verify=True, external_path=None):
         """builds the filepath based on custom file extensions and suffixes during processing.
 
         Params (verify):
@@ -110,7 +122,12 @@ Keyword Arguments:
 
         filename = f'{self.base_filename}{_suffix}.{extension}'
         alt_filename = f'{self.alternate_base_filename}{_suffix}.{extension}'
-        path = PurePath(self.data_dir, str(self.sentrix_id), filename)
+        
+        if external_path is None:
+            path = PurePath(self.data_dir, str(self.sentrix_id), filename)
+        else:
+            path = PurePath(external_path, filename) # explicitly defined external path, no sentrix_id subfolder needed
+
         if verify:
             # confirm this sample IDAT file exists, and update its filepath if different.
             # if filename fails, it will check alt_filename too.
@@ -124,7 +141,7 @@ Keyword Arguments:
         _suffix = ''
         if suffix is not None:
             _suffix = f'_{suffix}'
-
+        
         filename_to_match = f'{self.base_filename}{_suffix}.{extension}'
         for zip_filename in zip_reader.file_names:
             if not zip_filename.endswith('.idat'):
@@ -133,6 +150,7 @@ Keyword Arguments:
                 # this is packed within the zipfile still, but zip_reader can fetch it.
                 LOGGER.info(zip_reader.get_file_info(zip_filename))
                 return zip_reader.get_file(zip_filename, match_partial=False)
+
 
     def _build_and_verify_path(self, filename, alt_filename=None, allow_compressed=False):
         """
@@ -152,10 +170,10 @@ Keyword Arguments:
         if Path(same_dir_path).is_file():
             # this idat file is in the same folder, no more searching needed.
             return same_dir_path
-
+        
         if allow_compressed and Path(same_dir_path.with_suffix('.gz')).is_file():
             return same_dir_path
-
+        
         # otherwise, do a recursive search for this file and return the first path found.
         #file_pattern = f'{self.data_dir}/**/{filename}'
         #file_matches = glob(file_pattern, recursive=True)
@@ -177,6 +195,46 @@ Keyword Arguments:
             LOGGER.warning(f'Multiple ({len(file_matches)}) files matched {alt_filename} -- saved path to first one: {file_matches[0]}')
         return file_matches[0]
 
-    def get_export_filepath(self, extension='csv'):
+    def get_export_filepath(self, extension='csv', external_path=None):
         """ Called by run_pipeline to find the folder/filename to export data as CSV, but CSV file doesn't exist yet."""
-        return self.get_filepath(extension, 'processed', verify=False)
+        return self.get_filepath(extension, 'processed', verify=False, external_path=external_path)
+
+
+    @beartype
+    def set_export_filepath(self, export_filepath: Path, force:bool=False) -> bool:
+        LOGGER.debug(f"Sample [{self}]: setting export_filepath to {export_filepath}")
+        
+        if self._export_filepath is not None:
+            if not force:
+                raise AttributeError(f"Sample [{self}] already has _export_filepath being set (to: [{export_filepath}]) - use force=True to force overwrite")
+            else:
+                LOGGER.debug(f" - forced overwriting former path: {self._export_filepath} and updating headers")
+        
+        headers = {}
+        with open(export_filepath, "r") as fh_in:
+            for line in fh_in:
+                if line[0] != "#":
+                    headers = {_:True for _ in line.strip().split(",")}
+                    break
+        
+        if not self.set_export_filepath_headers(headers):
+            return False
+        else:
+            self._export_filepath = export_filepath
+        
+        return True
+
+
+    @beartype
+    def set_export_filepath_headers(self, headers: dict) -> bool:
+        if 'IlmnID' not in headers:
+            raise ValueError("IlmnID not defined")
+        
+        for key, value in headers.items():
+            if not isinstance(value, bool):
+                raise ValueError(f"{key} is not a boolean: {value}")
+        
+        self._export_filepath_headers = headers
+        
+        return True
+    

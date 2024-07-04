@@ -5,7 +5,7 @@
 # PATH =  '../../docs/example_data/GSE69852/minfi/' #--- for testing in console
 PATH = 'docs/example_data/minfi/'
 IDAT_SOURCE = 'docs/example_data/GSE69852'
-import methylprep
+import pymetharray
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -13,7 +13,7 @@ import shutil
 
 def test_noob_df_same_size_as_minfi():
     ID = '9247377085_R04C02'
-    manifest = methylprep.files.Manifest(methylprep.models.ArrayType('450k'))
+    manifest = pymetharray.files.Manifest(pymetharray.models.ArrayType('450k'))
     print('* loading one idat pair of files')
     green_filepath = Path(PATH, f'{ID}_Grn.idat') #'204879580038_R06C02_Grn.idat')
     red_filepath = Path(PATH, f'{ID}_Red.idat') #'204879580038_R06C02_Red.idat')
@@ -24,16 +24,16 @@ def test_noob_df_same_size_as_minfi():
     if not red_filepath.exists():
         shutil.copy(Path(IDAT_SOURCE, f'{ID}_Red.idat'), red_filepath)
 
-    green_idat = methylprep.files.IdatDataset(green_filepath, channel=methylprep.models.Channel.GREEN)
-    red_idat = methylprep.files.IdatDataset(red_filepath, channel=methylprep.models.Channel.RED)
-    sample = methylprep.models.Sample('','1234567890','R01C01', Sample_Name='testsample')
-    sigset = methylprep.models.SigSet(sample, green_idat, red_idat, manifest)
+    green_idat = pymetharray.files.IdatDataset(green_filepath, channel=pymetharray.models.Channel.GREEN)
+    red_idat = pymetharray.files.IdatDataset(red_filepath, channel=pymetharray.models.Channel.RED)
+    sample = pymetharray.models.Sample('','1234567890','R01C01', Sample_Name='testsample')
+    sigset = pymetharray.models.SigSet(sample, green_idat, red_idat, manifest)
     #print('* raw_dataset')
-    #raw_dataset = methylprep.models.raw_dataset.RawDataset(sample, green_idat, red_idat)
+    #raw_dataset = pymetharray.models.raw_dataset.RawDataset(sample, green_idat, red_idat)
     #print('* meth_dataset.unmethylated')
-    #unmethylated = methylprep.models.MethylationDataset.unmethylated(raw_dataset, manifest)
+    #unmethylated = pymetharray.models.MethylationDataset.unmethylated(raw_dataset, manifest)
     #print('* meth_dataset.methylated')
-    #methylated = methylprep.models.MethylationDataset.methylated(raw_dataset, manifest)
+    #methylated = pymetharray.models.MethylationDataset.methylated(raw_dataset, manifest)
     m_minfi = pd.read_csv(Path(PATH, 'minfi_raw_meth.csv')).rename(columns={'Unnamed: 0':'IlmnID'}).set_index('IlmnID')
     u_minfi = pd.read_csv(Path(PATH, 'minfi_raw_unmeth.csv')).rename(columns={'Unnamed: 0':'IlmnID'}).set_index('IlmnID')
     m1 = sigset.methylated.sort_index()[['Meth']].rename(columns={'Meth': ID})
@@ -44,14 +44,14 @@ def test_noob_df_same_size_as_minfi():
     mean_diff_u = (u1 - u2).mean()
     print(f"minfi mean difference, meth: {mean_diff_m}, unmeth: {mean_diff_u}")
     if float(mean_diff_m.sum()) != 0 or float(mean_diff_u.sum()) != 0:
-        raise AssertionError(f"raw meth/unmeth values don't match between methylprep and minfi METH: {float(mean_diff_m.sum())}, UNMETH: {float(mean_diff_u.sum())}")
+        raise AssertionError(f"raw meth/unmeth values don't match between pymetharray and minfi METH: {float(mean_diff_m.sum())}, UNMETH: {float(mean_diff_u.sum())}")
 
     nm_minfi = pd.read_csv(Path(PATH, 'minfi_noob_meth.csv')).rename(columns={'Unnamed: 0':'IlmnID'}).set_index('IlmnID').sort_index()
     nu_minfi = pd.read_csv(Path(PATH, 'minfi_noob_unmeth.csv')).rename(columns={'Unnamed: 0':'IlmnID'}).set_index('IlmnID').sort_index()
     b_minfi = pd.read_csv(Path(PATH, 'minfi_noob_betas.csv')).rename(columns={'Unnamed: 0':'IlmnID'}).set_index('IlmnID').sort_index()
 
     idat_dataset_pair = {'green_idat': green_idat, 'red_idat':red_idat, 'sample':sample}
-    container = methylprep.processing.SampleDataContainer(idat_dataset_pair, manifest,
+    container = pymetharray.processing.SampleDataContainer(idat_dataset_pair, manifest,
         retain_uncorrected_probe_intensities=True,
         pval=False,
         do_noob=True,
@@ -77,7 +77,7 @@ def test_noob_df_same_size_as_minfi():
     # OLD LIMIT WAS: noob_unmeth_match = all(np.isclose(nu_minfi['9247377085_R04C02'].round(0), data_frame['noob_unmeth'].sort_index(), atol=1.0))
     print(f"minfi NOOB matches for METH: {noob_meth_match}, UNMETH: {noob_unmeth_match}")
     if noob_meth_match is False or noob_unmeth_match is False:
-        raise AssertionError("noob meth or unmeth values don't match between minfi and methylprep (expect 100% match)")
+        raise AssertionError("noob meth or unmeth values don't match between minfi and pymetharray (expect 100% match)")
 
     ref_data_frame = data_frame[ ~data_frame.index.str.startswith('rs') ]
     noob_betas_match = sum(np.isclose(b_minfi['9247377085_R04C02'], ref_data_frame['beta_value'].sort_index(), atol=0.03))/len(data_frame)
@@ -85,12 +85,12 @@ def test_noob_df_same_size_as_minfi():
     print(f"minfi betas match (+/- 0.03): {noob_betas_match} or +/- 0.1: {noob_betas_loose_match}")
 
     # this overwrites data, so copying it
-    alt_frame = container._postprocess(ref_data_frame.copy(), methylprep.processing.postprocess.calculate_beta_value, 'beta_value', offset=0)
+    alt_frame = container._postprocess(ref_data_frame.copy(), pymetharray.processing.postprocess.calculate_beta_value, 'beta_value', offset=0)
     noob_betas_match = sum(np.isclose(b_minfi['9247377085_R04C02'], alt_frame['beta_value'].sort_index(), atol=0.001))/len(data_frame)
     noob_betas_loose_match = sum(np.isclose(b_minfi['9247377085_R04C02'], alt_frame['beta_value'].sort_index(), atol=0.01))/len(data_frame)
     print(f"minfi betas match (+/- 0.001): {noob_betas_match} or +/- 0.01: {noob_betas_loose_match}")
     if noob_betas_match < 0.999:
-        raise AssertionError("noob betas don't match between minfi and methylprep (expecte 99.9% of betas for probes to be +/- 0.001)")
+        raise AssertionError("noob betas don't match between minfi and pymetharray (expecte 99.9% of betas for probes to be +/- 0.001)")
 
     Path(PATH, f'{ID}_Grn.idat').unlink()
     Path(PATH, f'{ID}_Red.idat').unlink()
@@ -110,7 +110,7 @@ def test_make_pipeline_noob_only():
     for outfile in test_outputs:
         if outfile.exists():
             outfile.unlink()
-    df = methylprep.make_pipeline(IDAT_SOURCE, steps=['noob'], sesame=False, debug=True, make_sample_sheet=True)
+    df = pymetharray.make_pipeline(IDAT_SOURCE, steps=['noob'], sesame=False, debug=True, make_sample_sheet=True)
     sample_name = '204879580038_R06C02'
     ref_beta = [
     ['cg00101675_BC21',              0.865335],

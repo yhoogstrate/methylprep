@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 # App
-from methylprep.processing import pipeline
+from pymetharray.processing import pipeline
 
 class TestPipeline():
 

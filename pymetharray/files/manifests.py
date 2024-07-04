@@ -20,7 +20,7 @@ __all__ = ['Manifest']
 
 LOGGER = logging.getLogger(__name__)
 
-MANIFEST_DIR_NAME = '.methylprep_manifest_files'
+MANIFEST_DIR_NAME = '.cache/pymetharray'
 MANIFEST_DIR_PATH = f'~/{MANIFEST_DIR_NAME}'
 MANIFEST_DIR_PATH_LAMBDA = f'/tmp/{MANIFEST_DIR_NAME}'
 MANIFEST_BUCKET_NAME = 'array-manifest-files'
@@ -197,6 +197,7 @@ class Manifest():
     def read_probes(self, manifest_file):
         if self.verbose:
             LOGGER.info(f'Reading manifest file: {Path(manifest_file.name).stem}')
+            LOGGER.debug(f' - path: {Path(manifest_file.name)}')
 
         try:
             data_frame = pd.read_csv(

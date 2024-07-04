@@ -1,7 +1,7 @@
 # LIb
 import pytest
 # App
-from methylprep.models.probes import Probe, ProbeType
+from pymetharray.models.probes import Probe, ProbeType
 
 
 class TestProbe():

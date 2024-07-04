@@ -11,9 +11,9 @@ import logging
 import time
 # app
 from .samplesheet_sync_idat import remove_idats_not_in_samplesheet
-from methylprep import run_pipeline
-#from methylprep.download.process_data import run_series --- breaks, dunno why!
-import methylprep.download.process_data
+from pymetharray import run_pipeline
+#from pymetharray.download.process_data import run_series --- breaks, dunno why!
+import pymetharray.download.process_data
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel( logging.INFO )
@@ -73,7 +73,7 @@ Arguments:
     else:
         if download_it == True:
             # option to have it retain the .xml.tgz files, which -- if multipart -- contain each smaple betas
-            result = download_miniml(geo_id, data_dir, remove_tgz=remove_tgz, verbose=verbose) ### methylprep v1.3.0 will change value return from string to list. Only used here within methylprep.
+            result = download_miniml(geo_id, data_dir, remove_tgz=remove_tgz, verbose=verbose) ### pymetharray v1.3.0 will change value return from string to list. Only used here within pymetharray.
             file = result['meta_data']
             # also returns a list of local_files found, if there were samples tgz'ed in with meta_data
             local_files = result['meta_data']
@@ -104,7 +104,7 @@ Arguments:
         # only some MINiML files have this.
         try:
             split_idat = sample.find('Supplementary-Data').text.split("/")[-1].split("_")
-            attributes_dir['Sample_ID'] = f"{split_idat[1]}_{split_idat[2]}" # {accession / GSM} is not used in methylprep data columns
+            attributes_dir['Sample_ID'] = f"{split_idat[1]}_{split_idat[2]}" # {accession / GSM} is not used in pymetharray data columns
             attributes_dir['Sentrix_ID'] = f"{split_idat[1]}"
             attributes_dir['Sentrix_Position'] = f"{split_idat[2]}"
         except:
@@ -532,7 +532,7 @@ def build_composite_dataset(geo_id_list, data_dir, merge=True, download_it=True,
                 LOGGER.info(f"Skipping {geo_id}; appears to be a prior run that didn't match filters, or was missing data.")
                 continue
         # exclude geo series whose HTML pages don't say TAR (of idat).
-        if methylprep.download.process_data.confirm_dataset_contains_idats(geo_id) == False:
+        if pymetharray.download.process_data.confirm_dataset_contains_idats(geo_id) == False:
             LOGGER.error(f"[!] Geo data set {geo_id} probably does NOT contain usable raw data (in .idat format). Not downloading.")
             continue
 
@@ -574,7 +574,7 @@ def build_composite_dataset(geo_id_list, data_dir, merge=True, download_it=True,
         else:
             try:
                 # download idats
-                methylprep.download.process_data.run_series(
+                pymetharray.download.process_data.run_series(
                     geo_id,
                     geo_folder,
                     dict_only=True,

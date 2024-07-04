@@ -1,11 +1,11 @@
 import pytest
-import methylprep
+import pymetharray
 from pathlib import Path
 PATH = 'docs/example_data/58496/samplesheet.csv'
 
 def test_sample_sheet_meta_data():
     """ TEST: meta_data and samplesheet objects match, when using alt column names in a samplesheet """
-    sample_sheet = methylprep.files.SampleSheet(PATH, PATH)
+    sample_sheet = pymetharray.files.SampleSheet(PATH, PATH)
     #sample_sheet.fields SHOULD BE a complete mapping of original and renamed_fields
     cols = list(sample_sheet.fields.values()) + ['Sample_ID']
     with pytest.raises(ValueError):

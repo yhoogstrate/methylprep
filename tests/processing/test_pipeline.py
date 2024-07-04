@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 # App
-from methylprep.processing import pipeline
+from pymetharray.processing import pipeline
 #patching
 import unittest
 try:
@@ -44,7 +44,7 @@ class TestPipeline():
             if outfile.exists():
                 outfile.unlink()
 
-        exit_status = os.system(f'python -m methylprep process -d {test_data_dir} --all --minfi')
+        exit_status = os.system(f'python -m pymetharray process -d {test_data_dir} --all --minfi')
 
         data = pd.read_csv(Path(test_data_dir, '9247377085', '9247377085_R04C02_processed.csv')).set_index('IlmnID')
         if (data['meth'] < 0).any() or (data['unmeth'] < 0).any():
@@ -56,7 +56,7 @@ class TestPipeline():
             for outfile in test_outputs:
                 if outfile.exists():
                     outfile.unlink()
-            raise AssertionError("methylprep process CLI failed with error(s)")
+            raise AssertionError("pymetharray process CLI failed with error(s)")
 
         testfile_1 = Path(test_data_dir, '9247377085', '9247377085_R04C02_processed.csv')
         test1 = pd.read_csv(testfile_1).set_index('IlmnID')
@@ -496,8 +496,8 @@ class TestPipeline():
         PATH = 'docs/example_data/mouse'
         ID = '204879580038_R06C02'
         print('* loading mouse manifest')
-        import methylprep
-        manifest = methylprep.files.Manifest(methylprep.models.ArrayType('mouse'))
+        import pymetharray
+        manifest = pymetharray.files.Manifest(pymetharray.models.ArrayType('mouse'))
         print('* loading one idat pair of files')
         green_filepath = Path(PATH, f'{ID}_Grn.idat') #'204879580038_R06C02_Grn.idat')
         red_filepath = Path(PATH, f'{ID}_Red.idat') #'204879580038_R06C02_Red.idat')
@@ -512,7 +512,7 @@ class TestPipeline():
         for _file in files_to_remove:
             if Path(PATH, _file).is_file():
                 Path(PATH, _file).unlink()
-        data = methylprep.run_pipeline(PATH, make_sample_sheet=True)
+        data = pymetharray.run_pipeline(PATH, make_sample_sheet=True)
         df = data[0]._SampleDataContainer__data_frame
         #print( np.isclose(list(df['beta_value'][:3]), [0.905712,  0.841185,  0.129731]) )
         #assert np.isclose(list(df['beta_value'][:3]), [0.905712,  0.841185,  0.129731]).all() == True
@@ -524,7 +524,7 @@ class TestPipeline():
         # SEE docs/debug_notebooks/sesame_mouse.R
         # sesame data came from openSesame() without any other kwargs
         # test = ses.loc[ sesame_mask].loc[ ~ses['beta_value'].isna() ].sample(10000)
-        # 10000 is a sample of all probes that are found in methylprep betas output | excludes mouse probes and rs probes.
+        # 10000 is a sample of all probes that are found in pymetharray betas output | excludes mouse probes and rs probes.
         sesame = pd.read_csv(Path(PATH,'open_sesame_mouse_betas_subdata.csv')).set_index('IlmnID')
         # pd.read_csv(Path(PATH,f'sesame_{ID}_beta_subset.csv')).set_index('IlmnID')
         # because sesame's output is ALL probes, I need to filter to just the overlapping ones
@@ -534,7 +534,7 @@ class TestPipeline():
         # diff.hist(bins=300, range=[-0.1, 0.1])
         # import matplotlib.pyplot as plt;plt.show()
         if diff.mean()[0] > 0.01: # actual is 0.0350574
-            raise AssertionError(f"sesame betas are too different from methylprep's for mouse data. Mean beta diff: {df_test.mean()}")
+            raise AssertionError(f"sesame betas are too different from pymetharray's for mouse data. Mean beta diff: {df_test.mean()}")
 
 
 class UnitTestCase(unittest.TestCase):

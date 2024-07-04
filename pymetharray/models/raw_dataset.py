@@ -1,4 +1,6 @@
 # Lib
+from beartype import beartype
+
 import logging
 import pandas as pd
 # App
@@ -10,6 +12,7 @@ from ..models import (
 from ..models.probes import FG_PROBE_SUBSETS
 from ..files import IdatDataset
 from ..utils import inner_join_data
+from ..models.samples import Sample
 # from ..utils.progress_bar import * # checks environment and imports tqdm appropriately.
 from collections import Counter
 
@@ -132,7 +135,11 @@ class RawDataset():
         TypeError: If an invalid Channel is provided when parsing an IDAT file.
     """
 
-    def __init__(self, sample, green_idat, red_idat):
+    @beartype
+    def __init__(self, sample: str, green_idat: str, red_idat: str):
+        if isinstance (filename, Sample):
+            print("has to obtain idat paths?")
+        
         snps_read = {green_idat.n_snps_read, red_idat.n_snps_read}
 
         if len(snps_read) > 1:

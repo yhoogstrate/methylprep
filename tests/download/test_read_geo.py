@@ -3,7 +3,7 @@ from pathlib import Path
 import gzip
 TESTPATH = 'docs/example_data/read_geo'
 #app
-import methylprep
+import pymetharray
 import methylcheck
 
 class TestReadGeo():

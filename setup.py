@@ -1,6 +1,8 @@
 # Lib
 from setuptools import setup, find_packages
-exec(open('methylprep/version.py').read())
+
+exec(open('pymetharray/version.py').read())
+requirements=open('requirements.txt').readlines()
 
 test_requirements = [
     'methylcheck', # 'git+https://github.com/FoxoTech/methylcheck.git@feature/v0.7.7#egg=methylcheck',
@@ -13,9 +15,9 @@ test_requirements = [
 ]
 
 setup(
-    name='methylprep',
+    name='pymetharray',
     version=__version__,
-    description='Python-based Illumina methylation array preprocessing software',
+    description='Python-based Illumina methylation array preprocessing software, fork of methylprep',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     project_urls = {
@@ -27,7 +29,7 @@ setup(
         'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
         'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.9',
         'Topic :: Scientific/Engineering :: Bio-Informatics',
         'Topic :: Scientific/Engineering :: Medical Science Apps.',
         'Framework :: Jupyter',
@@ -38,24 +40,14 @@ setup(
         'Operating System :: POSIX :: Linux',
       ],
     keywords='methylation dna data processing epigenetics illumina',
-    url='https://github.com/FOXOBioScience/methylprep',
+    url='https://github.com/yhoogstrate/pymetharray',
     license='MIT',
-    author='Life Epigenetics',
-    author_email='info@FOXOBioScience.com',
+    author=['Dr. Youri Hoogstrate', 'Life Epigenetics'],
+    author_email=['y.hoogstrate@erasmusmc.nl','info@FOXOBioScience.com'],
     packages=find_packages(),
     include_package_data=True,
     package_data={"":["*.txt.gz"]},
-    install_requires=[
-        'pyparsing > 3.0',
-        'numpy',
-        'pandas >=1.3.0',
-        'scipy',
-        'statsmodels',
-        'tqdm',
-        'bs4',
-        'lxml',
-        'requests',
-    ],
+    install_requires=requirements,
     extras_require={
         'dev': test_requirements
     },

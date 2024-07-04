@@ -7,7 +7,7 @@ import os
 import shutil
 
 # App
-import methylprep
+import pymetharray
 
 #patching
 try:
@@ -23,7 +23,7 @@ class TestBetaBake():
         """ SKIP: this test no longer works because the dataset now has 11GB of data, instead of just a samplesheet. """
         LOCAL = Path('docs/example_data/GSE132203')
         kwargs = {'project_name': 'GSE132203', 'data_dir': LOCAL, 'clean':False, 'compress':False, 'verbose':True}
-        result = methylprep.download.pipeline_find_betas_any_source(**kwargs)
+        result = pymetharray.download.pipeline_find_betas_any_source(**kwargs)
         print(result)
         # runs a bunch of stuff. This GSE dataset has no IDATs or series matrix betas. just testing the samplesheet part.
         samplesheet = pd.read_csv(Path(LOCAL, f"{kwargs['project_name']}_samplesheet.csv"))
@@ -54,7 +54,7 @@ class TestBetaBake():
 
         LOCAL = Path('docs/example_data/GSE110454')
         kwargs = {'project_name': 'GSE110454', 'data_dir': LOCAL, 'clean':False, 'compress':False, 'verbose':True}
-        result = methylprep.download.pipeline_find_betas_any_source(**kwargs)
+        result = pymetharray.download.pipeline_find_betas_any_source(**kwargs)
         print(result)
         # runs a bunch of stuff. This GSE dataset has no IDATs or series matrix betas. just testing the samplesheet part.
         samplesheet = pd.read_csv(Path(LOCAL, f"{kwargs['project_name']}_samplesheet.csv"))
@@ -120,7 +120,7 @@ class TestBetaBake():
         PLATFORM = 'GPL8490'
         LOCAL = Path('docs/example_data/GSE17769')
         kwargs = {'project_name': 'GSE17769', 'data_dir': LOCAL, 'clean':False, 'compress':False, 'verbose':True}
-        result = methylprep.download.pipeline_find_betas_any_source(**kwargs)
+        result = pymetharray.download.pipeline_find_betas_any_source(**kwargs)
         print(result)
         # runs a bunch of stuff. This GSE dataset has no IDATs or series matrix betas. just testing the samplesheet part.
         with open(Path(LOCAL, f"{kwargs['project_name']}_family.xml"), 'rb') as f:
@@ -159,7 +159,7 @@ class TestBetaBake():
         if data['headers_df'].shape != (34, 14):
             raise AssertionError("dummy data mismatch data['headers_df']")
 
-        result = methylprep.files.sample_sheets.sample_names_from_matrix(Path('docs/example_data/GSE158089/'))
+        result = pymetharray.files.sample_sheets.sample_names_from_matrix(Path('docs/example_data/GSE158089/'))
         if result != ['iPSC_1', 'iPSC_2', 'NPC_1', 'NPC_2', 'NPC_3', 'NPC_4', 'Neuron_D37_1', 'Neuron_D37_2', 'Neuron_D37_3', 'Neuron_D37_4', 'Neuron_D58_1', 'Neuron_D58_2', 'Neuron_D58_3', 'Neuron_D58_4']:
             raise AssertionError("sample_names_from_matrix failed to parse test_series_matrix.txt")
 
@@ -167,6 +167,6 @@ class TestBetaBake():
         import methylcheck
         test_file = Path('docs/example_data/GSE158089/test_series_matrix.txt')
         data = methylcheck.read_geo_processed.read_series_matrix(test_file, include_headers_df=True)
-        meta_df = methylprep.download.geo.samplesheet_from_series_matrix( data['headers_df'] )
+        meta_df = pymetharray.download.geo.samplesheet_from_series_matrix( data['headers_df'] )
         if any(meta_df.columns.duplicated()):
             raise AsserttionError(f"Duplicate columns returned")

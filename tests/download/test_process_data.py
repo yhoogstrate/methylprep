@@ -5,9 +5,9 @@ from pathlib import Path
 import os
 import shutil
 # App
-from methylprep.download import process_data
-from methylprep.download import convert_miniml
-from methylprep.download import run_series
+from pymetharray.download import process_data
+from pymetharray.download import convert_miniml
+from pymetharray.download import run_series
 #patching
 try:
     # python 3.4+ should use builtin unittest.mock not mock package
@@ -20,14 +20,14 @@ class TestProcessData():
 
     @staticmethod
     def test_cli_entrypoint():
-        exit_status = os.system('python -m methylprep --help')
+        exit_status = os.system('python -m pymetharray --help')
         assert exit_status == 0
 
     @staticmethod
     def test_cli_miniml():
         geo_id = 'GSE17769'
         test_data_dir = f'docs/example_data/{geo_id}' # created by this in test environment
-        exit_status = os.system(f"python -m methylprep meta_data -i {geo_id} -d {test_data_dir}")
+        exit_status = os.system(f"python -m pymetharray meta_data -i {geo_id} -d {test_data_dir}")
         if not Path(test_data_dir, f"{geo_id}_family.xml").exists():
             raise FileNotFoundError("meta_data: miniml file not found.")
         for _file in Path(test_data_dir).rglob('*'):
@@ -42,16 +42,16 @@ class TestProcessData():
     @staticmethod
     def test_download():
         """this is a full integration test of `download` function on smallest data set on GEO
-        CLI: python -m methylprep download -i GSE123754 -d GSE123754 --dict_only --no_decompress
+        CLI: python -m pymetharray download -i GSE123754 -d GSE123754 --dict_only --no_decompress
         pass in fake command line args.
         verify files exist, then remove them. confirm time takes ~2 (<5) mins"""
         test_geo_id = 'GSE123754'
         test_data_dir = 'docs/example_data/GSE123754'
 
-        exit_status = os.system(f'python -m methylprep download -i {test_geo_id} -d {test_data_dir} --dict_only --no_decompress')
+        exit_status = os.system(f'python -m pymetharray download -i {test_geo_id} -d {test_data_dir} --dict_only --no_decompress')
         if exit_status != 0:
             shutil.rmtree(test_data_dir)
-            raise AssertionError("methylprep download exited with error(s)")
+            raise AssertionError("pymetharray download exited with error(s)")
         # verify files exist
         expected_dirs = [
             Path(test_data_dir),

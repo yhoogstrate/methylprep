@@ -3,8 +3,8 @@ from pathlib import Path
 import pytest
 
 # App
-from methylprep.files import IdatDataset
-from methylprep.models import Channel
+from pymetharray.files import IdatDataset
+from pymetharray.models import Channel
 
 class TestIdatModel(object):
     test_data_dir = 'docs/example_data/GSE69852'

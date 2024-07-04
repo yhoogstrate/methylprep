@@ -1,4 +1,4 @@
-import methylprep
+import pymetharray
 import pandas as pd
 from pathlib import Path
 import matplotlib.pyplot as plt # debug
@@ -22,7 +22,7 @@ class TestSesame():
             attrib = filename.split('.')[0]
             df = pd.read_csv(Path(LOCAL,filename)).set_index('Unnamed: 0').sort_index()
             setattr(self, attrib, df)
-        methylprep_files = [
+        pymetharray_files = [
             'meth_values.pkl',
             'unmeth_values.pkl',
             'noob_meth_values.pkl',
@@ -30,15 +30,15 @@ class TestSesame():
             'beta_values.pkl',
         ]
         do_run_pipeline = False
-        for filename in methylprep_files:
+        for filename in pymetharray_files:
             if not Path(LOCAL,filename).exists():
                 do_run_pipeline = True
                 print(f"MUST re-run pipeline on {LOCAL} because files are missing.")
                 break
         if do_run_pipeline:
-            methylprep.make_pipeline(LOCAL, steps=['all'], exports=['all'], make_sample_sheet=True, save_uncorrected=True)
+            pymetharray.make_pipeline(LOCAL, steps=['all'], exports=['all'], make_sample_sheet=True, save_uncorrected=True)
             # same as CLI -d . --all
-        for filename in methylprep_files:
+        for filename in pymetharray_files:
             attrib = filename.split('.')[0]
             df = pd.read_pickle(Path(LOCAL,filename))
             setattr(self, attrib, df)
@@ -90,7 +90,7 @@ class TestSesame():
 
 
 def compare_noob():
-    methylprep.make_pipeline(LOCAL, steps=['poobah', 'quality_mask', 'noob'], exports=['all'], make_sample_sheet=True, save_uncorrected=True, sesame=False, debug=True)
+    pymetharray.make_pipeline(LOCAL, steps=['poobah', 'quality_mask', 'noob'], exports=['all'], make_sample_sheet=True, save_uncorrected=True, sesame=False, debug=True)
     meth = pd.read_pickle(Path(LOCAL,'noob_meth_values.pkl'))
     unmeth = pd.read_pickle(Path(LOCAL,'noob_unmeth_values.pkl'))
     noob = pd.concat([meth['204879580038_R06C02'].rename('M'), unmeth['204879580038_R06C02'].rename('U')], axis=1)

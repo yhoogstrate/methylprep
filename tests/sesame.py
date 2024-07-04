@@ -1,7 +1,7 @@
-# analog of sesame's SigSet class -- pytest does NOT run this file. Just here for legacy notes on pre v1.5x methylprep.
+# analog of sesame's SigSet class -- pytest does NOT run this file. Just here for legacy notes on pre v1.5x pymetharray.
 import pandas as pd
 import numpy as np
-import methylprep
+import pymetharray
 from pathlib import Path
 
 def sesame_convert(filename, LOCAL_PATH = Path('/Volumes/LEGX/GSE69852/idats/'), drop_rs=True):
@@ -11,22 +11,22 @@ def sesame_convert(filename, LOCAL_PATH = Path('/Volumes/LEGX/GSE69852/idats/'),
     return data
 
 class Sesame():
-    """ used for testing, comparing methylprep with sesame output. """
-    def __init__(self, LOCAL_PATH, SESAME_PATH=None, run_tests=True, array_type=methylprep.ArrayType.ILLUMINA_450K ):
+    """ used for testing, comparing pymetharray with sesame output. """
+    def __init__(self, LOCAL_PATH, SESAME_PATH=None, run_tests=True, array_type=pymetharray.ArrayType.ILLUMINA_450K ):
         self.LOCAL_PATH = LOCAL_PATH
         self.SESAME_PATH = SESAME_PATH
-        self.sample_sheet = methylprep.files.get_sample_sheet(LOCAL_PATH)
-        self.manifest = methylprep.Manifest(array_type)
+        self.sample_sheet = pymetharray.files.get_sample_sheet(LOCAL_PATH)
+        self.manifest = pymetharray.Manifest(array_type)
 
         # raw datasets are the red and green idat probe values, indexed by illumina ids (not cpg000000)
-        self.raw_datasets = methylprep.models.raw_dataset.get_raw_datasets(self.sample_sheet)
+        self.raw_datasets = pymetharray.models.raw_dataset.get_raw_datasets(self.sample_sheet)
 
         # meth datasets have idat values linked to IlmnID probe ids.
         # storing as a dict pair of objects
         meth_datasets = []
         for raw_dataset in self.raw_datasets:
-            methylated = methylprep.models.MethylationDataset.methylated(raw_dataset, self.manifest)
-            unmethylated = methylprep.models.MethylationDataset.unmethylated(raw_dataset, self.manifest)
+            methylated = pymetharray.models.MethylationDataset.methylated(raw_dataset, self.manifest)
+            unmethylated = pymetharray.models.MethylationDataset.unmethylated(raw_dataset, self.manifest)
             meth_datasets.append({'meth':methylated, 'unmeth':unmethylated})
 
         # only testing first sample
@@ -54,7 +54,7 @@ class Sesame():
         self.containers = []
         self.snps = []
         for raw_dataset in self.raw_datasets:
-            container = methylprep.processing.pipeline.SampleDataContainer(raw_dataset,
+            container = pymetharray.processing.pipeline.SampleDataContainer(raw_dataset,
                 self.manifest,
                 retain_uncorrected_probe_intensities=False,
                 bit='float32',
@@ -69,7 +69,7 @@ class Sesame():
             container.process_all()
             self.containers.append(container)
 
-            snp = methylprep.processing.postprocess.one_sample_control_snp(container)
+            snp = pymetharray.processing.postprocess.one_sample_control_snp(container)
             snp = snp[~snp['snp_meth'].isna()][['snp_meth','snp_unmeth']].rename({'snp_meth': 'meth', 'snp_unmeth':'unmeth'})
             self.snps.append(snp)
 
@@ -90,7 +90,7 @@ class Sesame():
             container.betas_from_raw = pd.DataFrame(container._SampleDataContainer__data_frame['beta_value'].sort_index())
 
         # run DYE STEP
-        self.dye_debug = methylprep.processing.dye_bias.nonlinear_dye_bias_correction(self.containers[0], debug=True)
+        self.dye_debug = pymetharray.processing.dye_bias.nonlinear_dye_bias_correction(self.containers[0], debug=True)
 
         self.test_IR1 = pd.read_csv(Path(self.LOCAL_PATH,'test_IR1.csv'))['x']
         self.test_IG1 = pd.read_csv(Path(self.LOCAL_PATH,'test_IG1.csv'))['x']
@@ -157,7 +157,7 @@ class Sesame():
             pass
 
         input_dataframe = self.containers[0]._SampleDataContainer__data_frame
-        self.containers[0]._postprocess(input_dataframe, methylprep.processing.postprocess.calculate_beta_value, 'beta_value', offset=0)
+        self.containers[0]._postprocess(input_dataframe, pymetharray.processing.postprocess.calculate_beta_value, 'beta_value', offset=0)
         self.pre_dye = self.containers[0].betas_from_raw # presorted df
         self.post_dye = pd.DataFrame(self.containers[0]._SampleDataContainer__data_frame['beta_value'].sort_index())
         print('Effect of dye bias on beta values:', (self.post_dye - self.pre_dye).mean())

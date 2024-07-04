@@ -1,7 +1,7 @@
 # LIb
 import pytest
 # App
-from methylprep.models import ArrayType
+from pymetharray.models import ArrayType
 
 ''' NOT IN USE ANYWHERE
 class TestArray():
